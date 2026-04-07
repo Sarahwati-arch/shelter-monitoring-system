@@ -1,0 +1,455 @@
+
+                                       
+                                       
+                                     Form3
+                                    Design
+Title :IoT-Based Smart CCTV and Environmental Monitoring System for Shelter with Machine Learning Detection and Real-Time Notification
+                                       
+                                       
+                                       
+                                 GROUP MEMBER:
+                                      No.
+                                 Student Name
+                                  Student ID
+                                      1.
+                             Anugrah Ananda Rivai
+                                 001202300178
+                                      2.
+                                   Sarahwati
+                                 001202300146
+                                      3.
+                              Victoria Astra Nawa
+                                 001202300095
+                                       
+                        Advisor : Rikip Ginanjar, M.Sc.
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                 Submitted for
+                            Capstone Design Project
+                        to Faculty of Computer Science
+                             President University
+                               TABLE OF CONTENT
+                                       
+                                       
+                                       
+
+
+
+
+
+
+                                       
+                           STATEMENT OF ORIGINALITY
+                                       
+In my capacity as an active student at President University and as the author of the Capstone Design Project stated below:
+Name			: 1. Anugrah Ananda Rivai  -  001202300178
+			  2. Sarahwati  -  001202300146
+			  3. Victoria Astra Nawa  -  001202300095
+
+Faculty			: Computer Science
+I hereby declare that my Capstone Design Project entitled "IoT-Based Smart CCTV and Environmental Monitoring System for Shelter with Machine Learning Detection and Real-Time Notification" is to the best of my knowledge and belief, an original piece of work based on sound academic principles. If there is any plagiarism detected in this final project, I am willing to be personally responsible for the consequences of these acts of plagiarism and will accept the sanctions against these acts in accordance with the rules and policies of President University.
+I also declare that this work, either in whole or in part, has not been submitted to another university to obtain a degree.
+                                                                               
+                                                                               
+                                                                               
+                                                                               
+                                                                               
+                                                           Cikarang, March 2026
+
+Signer 1
+Signer 2
+Signer 3
+
+
+
+
+
+
+
+Anugrah Ananda Rivai  -  001202300178
+Sarahwati  -  001202300146
+Victoria Astra Nawa  -  001202300095
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+SCREENSHOT OF ZEROGPT
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    A. --------------------------------------------------------------------------------
+   SYSTEM DESIGN
+
+
+  1.   Architecture Design
+
+
+
+Edge Layer (Perception):
+This layer contains the hardware deployed directly inside the shelter. We use an ESP32 to poll data from the DHT22 and MPU6050 sensors every few seconds. A Raspberry Pi 4 manages the Pi Camera Module V2 to capture visual evidence. To save bandwidth, the camera stays in standby mode and only triggers when the system detects a high-risk event or a technician sends a manual override command.
+Network Layer (Transport):
+This layer manages the data flow from the devices to the cloud using a 2.4 GHz WiFi connection. The ESP32 publishes sensor telemetry, like a 32.5°C temperature reading, via the MQTT protocol in JSON format. We chose MQTT because it is lightweight and handles real-time monitoring with minimal overhead. For larger files, the Raspberry Pi uploads .jpg images directly to the backend server using HTTPS POST to ensure secure transmission.
+
+
+Cloud Layer (Application & Processing):
+The cloud layer handles all heavy processing and long-term storage. The backend server receives every sensor packet and image file for analysis. Our scikit-learn model processes these inputs to classify the environment into low, medium, or high-risk categories. Simultaneously, the system runs face detection on any incoming images to identify unauthorized personnel.
+
+  2.   Entity Relationship Diagram 
+
+
+We use a relational database to organize sensor logs and CCTV evidence.
+  oo   Shelter and Device Management: 
+   The Shelter table acts as the primary entity for all data. This structure allows us to track multiple locations and pinpoint exactly which sensor sent a specific reading.
+  oo   Telemetry and Sensor Data Storage: 
+   The SensorData table stores temperature and vibration values with a precise timestamp. These logs allow the web dashboard to generate historical graphs so users can spot dangerous patterns early.
+  oo   Evidence and Notification Linking: 
+   When the system detects a risk, it saves a record in the CCTVEvidence table. We store the image URL and link it to a specific alert ID so technicians can see exactly what triggered the notification.
+  oo   Threshold and Risk Configuration: 
+   The Threshold table stores critical limits, such as a 45°C temperature ceiling. We can update these safety margins in the database without changing a single line of backend code.
+
+  3.   Machine Learning Logic and Process Design
+
+
+
+
+Data Acquisition and Pre-processing: 
+The process kicks off when the ESP32 sends a JSON payload. The system extracts the raw floats and prepares them for the ML model to ensure the classification is accurate
+Risk Classification: The model evaluates the vibration magnitude and temperature data alongside the image analysis.
+Low Risk: If values remain below the 35°C warning threshold, the system simply logs the data and keeps monitoring.
+High Risk: If the model detects a temperature spike or an unknown person, it marks the status as high risk.
+Alert Execution: 
+During a high-risk event, the system executes two tasks at once.
+Evidence Capture: The Raspberry Pi captures a JPEG image and sends it to the server.
+Instant Notification: The backend triggers the Telegram API to send a mobile alert to the technician.
+System Feedback Loop: 
+The system saves the entire incident report to the database before returning to its normal monitoring loop.
+
+  4.   Interface Mock-ups
+
+
+The Dashboard helps technicians monitor the shelter and respond to incidents quickly.
+Web-Based Monitoring Dashboard: 
+  oo   Live CCTV Feed: This panel displays the most recent images captured by the Pi Camera. It does not show live video, but rather the specific frames taken during anomalies.
+  oo   Real-Time Status Indicators: Gauge charts show real-time temperature and vibration. The color shifts to red if a value passes the safe limit.
+  oo   Dynamic Alert Feed: This table logs every recent alert with the time and a link to the evidence
+Real-Time Telegram Notification:
+  oo   The Telegram bot ensures users stay updated even when they are away from their desks.
+  oo   Alert Message: The message includes the specific risk type and the Shelter ID.
+  oo   User Interaction and Feedback: Technicians can mark alerts as "Handled" directly through the dashboard to track the response history.
+
+
+
+
+
+    A. --------------------------------------------------------------------------------
+   HIERARCHICAL/ITERATIVE DESIGN
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+   
+  1.   Software Engineering Design Steps
+   We used a top-down software engineering approach to design this monitoring system, ensuring a logical progression from the overarching architecture down to the individual components:
+   Architectural Design: We defined the distributed structure of the system, dividing it into the physical Edge Nodes inside the shelter, the Central Processing Server in the cloud, and the User Endpoints for the technicians.
+   Interface Design: We established the communication protocols between these blocks. This includes using MQTT for lightweight, real-time telemetry streaming and HTTP REST APIs for handling larger payloads like image uploads.
+   Component-Level Design: We mapped out the specific hardware modules, integrated circuits (ICs), and the primitive software functions required to process sensor inputs and execute machine learning classifications.
+   
+  2.   Hierarchical Block Diagram (Highest to Lowest Level)
+The system is broken down into three distinct levels, moving from the macro-architecture down to the discrete hardware and software primitives.
+  oo   Level 0 (System Architecture): The highest level grouping the physical Shelter Environment, the Central Processing Server, and the User Endpoints.
+  oo   Level 1 (Subsystem Level): This level breaks down the main architecture into functional blocks, including the IoT Sensor Node, Smart CCTV Node, MQTT Broker, Backend API Logic, and Relational Database.
+  oo   Level 2 (Lowest Level / Hardware & Primitive Functions): * Discrete Components and ICs: * ESP32 microcontroller acting as the main processing unit for the sensors. * MPU6050 Integrated Circuit (accelerometer and gyroscope) communicating via I2C interface to measure vibration. * DHT22 digital temperature sensor connected via GPIO pins. * Raspberry Pi 4 integrated with a Pi Camera Module V2 for physical evidence capture.
+Primitive Software Functions:
+  oo   readTemperature(): A software function to fetch digital float values from the DHT22.
+  oo   readVibration(): A primitive function to extract acceleration magnitudes from the MPU6050 hardware registers.
+  oo   captureEvidence(shelter_id): A hardware-triggering function to activate the camera shutter and save the .jpg file locally before upload.
+--------------------------------------------------------------------------------
+   
+
+
+3. Clear Interface Information
+To ensure seamless communication between the system blocks, we defined the following interfaces:
+  oo   Message Passing: The ESP32 sensor node continuously transmits telemetry data to the MQTT broker using JSON-formatted messages (e.g., {"temp": 34.5, "vib": 0.4, "timestamp": "2026-03-25T20:30:00Z"}). Conversely, the server passes trigger commands to the Raspberry Pi by publishing to a specific MQTT topic (shelter/device_id/camera/trigger).
+  oo   Parameter Passing: During risk analysis, the backend logic passes historical telemetry arrays as parameters into the machine learning module using the predictRisk(temp_array, vib_array) function. Additionally, the Raspberry Pi passes image data and authentication tokens via an HTTP POST request payload when uploading evidence to the server.
+  oo   Global Variables: Critical system configurations -- such as the database connection URI, MQTT secret keys, Telegram API tokens, and baseline temperature/vibration thresholds -- are stored as global environment variables (.env) on the backend server. This allows all modules to access necessary configurations securely without hardcoding values into the logic.
+4. Component References and Libraries Used
+  oo   The software implementation relies on the following standard libraries and references to handle hardware interfacing and data processing:
+  oo   ESP32 Firmware (C/C++): PubSubClient.h for handling MQTT message passing, Adafruit_Sensor.h and DHT.h for temperature data acquisition, and Adafruit_MPU6050.h to interact with the vibration IC.
+  oo   Raspberry Pi (Python): picamera to control the physical camera hardware and requests to manage HTTP REST API interactions.
+  oo   Backend & Machine Learning: paho-mqtt for the server-side broker connection, scikit-learn (or TensorFlow Lite) to run the predictive risk classification model, and python-telegram-bot to manage real-time alert dispatches.
+
+   5. System Modelling (UML & Flowcharts)
+We utilized standard Unified Modeling Language (UML) and flowcharting techniques to represent both the structural and behavioral aspects of the system.
+  oo   Use Case Diagram: Defines the interactions between the Administrator, Technician, AI Module, and the system components. 
+   
+  oo   Entity Relationship Diagram (ERD): Details the relational database schema, tables, and cardinalities.
+   
+
+  oo   Data Flow Diagram (DFD): Maps how telemetry, configuration, and image data move through system processes from the shelter environment to the end-users. To comply with strict structural modeling standards, the DFD is hierarchically decomposed into multiple levels: starting from a macro-level Context Diagram (Level 0), breaking down into main sub-processes (Level 1), detailing the anomaly detection logic (Level 2), and reaching the deepest algorithmic flow of the Machine Learning classification (Level 3).
+
+
+
+
+   Level 0
+   
+
+
+
+   Level 1
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+
+Level 2: 							Level 3:
+			
+   
+   
+   
+   
+  oo   Input data The process begins with two primary data sources:- Real-time telemetry stream. This represents continuous incoming data from sensors- Threshold Database (D2). This database stores predefined threshold values for each sensor parameter. These thresholds act as reference limits to determine whether the system is operating under normal or abnormal conditions.
+  oo   Process 3.1In this stage, the system compares incoming real-time sensor data with the predefined threshold value.- if the sensor values remain within acceptable limits, the system considers the condition normal and no further action is taken.- if the sensor values exceed the threshold, the system identifies this as a threshold breach.
+  oo   Process 3.2After detecting a threshold breach, the system retrieves historical data from the sensor data database. The retrieved data includes :- Previous temperature and vibration readings- Corresponding timestampsThe purpose of this step is to:- provide additional context for analysis- identify patterns or trends over time- reduce false positives caused by temporary spikes or noise in sensor readings
+  oo   Process 3.3At this part, the system applies a machine learning model to classify the level of risk the inputs for this process include the current real time sensor data and historical sensor data.The model processes these inputs to determine a risk level, typically categorized as, low, medium, and high.
+  oo   Output The final output of the system consist of- anomaly event dataIndicates that an abnormal condition has been detected- high risk flagSignals that the detected condition is critical and requires immediate attention
+   This output is then forwarded to the next process, which may include- alert notification system- monitoring dashboard- early warning or automated response system.
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+  oo   Activity Diagram: Visualizes the step-by-step logic from initial sensor reading to alert generation and ticket resolution. 
+   
+  oo   Sequence Diagram: Illustrates the chronological message passing between system objects during an anomaly event. 
+   
+  oo   Class Diagram: Defines the static software structure of the backend, mapping out classes such as TelemetryData, RiskAnalyzer, and AlertManager. 
+   
+
+
+
+
+
+    A. --------------------------------------------------------------------------------
+   STANDARDS USED 
+--------------------------------------------------------------------------------
+   
+   
+                               Standard Category
+                                 Specification
+                                  Description
+                                 Voltage level
+                                  5V / 3.3 V
+            Raspberry Pi powered by 5V, ESP32 and sensors use 3.3v
+                                  Data Format
+                                     JSON
+     Used for transmitting sensor data via MQTT and backend communication
+                            Communication Protocol
+                                     MQTT
+       Used for real time sensor data transmission from ESP32 to server
+                                   API Style
+                             REST API (HTTP/HTTPS)
+            Used for sending CCTV images and backend communication
+                              Transport protocol
+                                     HTTPS
+          Ensure secure data transmission between devices and server
+                               Messaging Format
+                                JSON over MQTT
+                     Structured format for telemetry data
+                      (Temperature, vibration, timestamp)
+                                 UML Standard
+                                    UML 2.x
+   Used for system modeling diagrams such as DFD, ERD, and Activity diagram
+                                  Date format
+                               YYYY-MM-DD:MM:SSZ
+                      Used for timestamps in sensor data
+                                  Time format
+                                   HH:MM:SS
+                      Used for system logs and monitoring
+                                  Form Factor
+                              Embedded IoT Device
+ Compact ESP32 sensor node and Raspberry Pi CCTV module for shelter deployment
+                               Network Standard
+                                     WiFi
+               Used for communication between devices and server
+                             Programming Language
+                                  Python, C++
+          Python for backend and Raspberry Pi C++ for ESP32 firmware
+                               Library standard
+                     PubSubClient, apho-mqtt, scikit-learn
+          Used for MQTT communication and machine learning processing
+                                 Image format
+                                  JPEG (.jpg)
+                 Used for storing and transmitting CCTV images
+                             Configuration Format
+                                     .env
+     Used for storing API Keys, MQTT credentials, and system configuration
+--------------------------------------------------------------------------------
+   
+
+--------------------------------------------------------------------------------
+   
+    B. --------------------------------------------------------------------------------
+   IMPLEMENTATION AND TESTING SCENARIO
+--------------------------------------------------------------------------------
+   
+
+No.
+Feature
+Implementation Description
+Test scenario
+Expected Result
+1
+Sensor Data  Collection
+ESP32 reads temperature and vibration data and sends it to the server via MQTT in JSON format. The backend receives the data and stores it in the database with timestamp
+Sensor sends valid data
+Data is received and stored in database successfully
+ 
+ 
+ 
+Database connection failure
+Data received and system logs warning
+ 
+ 
+ 
+Sensor disconnected
+No data received and system logs warning
+2
+Risk detection & alert
+Backend analyzes sensor data and determines risk level based on predefined threshold
+Normal values
+No alert sent
+ 
+ 
+ 
+High temperature or vibration detection
+System sends alert to telegram with sensor values and timestamp
+ 3
+MQTT communication
+ESP32 publishes telemetary data to MQTT broker continuosly
+JSON message sent
+Backed processes data correctly
+ 
+ 
+ 
+Invalid JSON format
+Data is rejected or error is logged
+ 4
+CCTV Activity
+Raspberry Pi camera captures images when activity is detected or triggered manually
+Person enters/leaves shelter
+Image is captured successfully
+ 
+ 
+ 
+No activity detected
+No image is captured
+ 5
+Evidence Storage
+Captured images are sent to server and stored with timestamp and shelter ID
+Valid image upload
+Image url and timestamp stored in database, and also sent to telegram bot
+ 
+ 
+ 
+Upload fails
+Image not stored and error is logged, the image not sent to telegram bot
+ 6
+Dashboard Monitoring
+Web dashboard displays sensor data and CCTV evidence from database
+New data available
+Dashboard updates with latest data and images
+ 
+ 
+ 
+No new data
+Dashboard show last recorded data
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+REFERENCES
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+Espressif Systems. (2023). ESP32 Series Datasheet. Espressif Official. Retrieved from https://www.espressif.com/en/products/socs/esp32
+Raspberry Pi Ltd. (n.d.). Raspberry Pi 4 Model B and Camera Module V2 Documentation. Retrieved from  [HYPERLINK: https://www.raspberrypi.com/documentation/]https://www.raspberrypi.com/documentation/ 
+OASIS. (2014). MQTT Version 3.1.1. OASIS Standard. Retrieved from  [HYPERLINK: https://mqtt.org/]https://mqtt.org/ 
+Pedregosa, F., et al. (2011). Scikit-learn: Machine Learning in Python. Journal of Machine Learning Research, 12, 2825-2830. Retrieved from  [HYPERLINK: https://scikit-learn.org/]https://scikit-learn.org/ 
+python-telegram-bot. (n.d.). python-telegram-bot: A Python wrapper for the Telegram Bot API. Retrieved from  [HYPERLINK: https://docs.python-telegram-bot.org/]https://docs.python-telegram-bot.org/ 
+Object Management Group (OMG). (2017). Unified Modeling Language (UML) Specification, Version 2.5.1. Retrieved from  [HYPERLINK: https://www.omg.org/spec/UML/]https://www.omg.org/spec/UML/ 
+Fielding, R., Ed., Nottingham, M., Ed., and J. Reschke, Ed., "HTTP Semantics", STD 97, RFC 9110, DOI 10.17487/RFC9110, June 2022, https://www.rfc-editor.org/info/rfc9110.
+Pamula, Abhiram Siva Prasad & Ravilla, Achyuth & Madiraju, Saisantosh Vamshi Harsha. 
+Patnaik, K Sridhar & Snigdh, Itu. (2019). Modelling and Designing of IoT Systems Using UML Diagrams. 10.4018/978-1-5225-7790-4.ch003 [HYPERLINK: https://doi.org/10.4018/978-1-5225-7790-4.ch003]
+Dogan, Eren. (2026). ESP32-BASED IOT AIR QUALITY MONITORING SYSTEMS A Comprehensive Guide to Implementation, Standards, and Real-World Applications. 10.5281/zenodo.18043217 [HYPERLINK: https://doi.org/10.5281/zenodo.18043217]
+Dattani, Pranay. (2021). Face Detection based on Image Processing using Raspberry Pi 4. https://www.researchgate.net/publication/351978561_Face_Detection_based_on_Image_Processing_using_Raspberry_Pi_4
+M. F. Tsaqief and J. Sutopo, "Comparative Performance Analysis Between the MQTT and WebSocket Protocols", bit-Tech, vol. 8, no. 2, pp. 2227 - 2237, Dec. 2025.
+Hasan, Md Tarek & Jatav, Divyaraj & Gadiraju, Ravi & Jain, Abhishek & Sharma, Prateek & Aetukuri, Sai. (2025). Interpretable AI Models for IoT-Enabled Environmental Monitoring and Disaster Risk Forecasting. 10.1109/ISAC364032.2025.11156565 [HYPERLINK: https://doi.org/10.1109/ISAC364032.2025.11156565]
+Shivhare, Shiv Naresh. (2025). Embedded TinyML for Predictive Maintenance: Vibration Analysis on ESP32 with Real-Time Fault Detection in Industrial Equipment. International Journal on Computational Modelling Applications. 2. 1-17. 10.63503/j.ijcma.2025.114 [HYPERLINK: https://doi.org/10.63503/j.ijcma.2025.114]
+
+
+
+

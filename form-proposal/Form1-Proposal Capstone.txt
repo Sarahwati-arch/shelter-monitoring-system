@@ -1,0 +1,846 @@
+                                       
+                                     Form1
+                           Capstone Design Proposal
+                                       
+                                   Title : 
+IoT-Based Smart CCTV and Environmental Monitoring System for Shelter with Machine Learning Detection and Real-Time Notification
+                                       
+                                 GROUP MEMBER:
+                                      No.
+                                 Student Name
+                                  Student ID
+                                 Study Program
+                                      1.
+Anugrah Ananda Rivai
+                                 001202300178
+                                    IT/IoT
+                                      2.
+                                   Sarahwati
+                                 001202300146
+                                    IT/IoT
+                                      3.
+                              Victoria Astra Nawa
+                                 001202300095
+                                     IT/AI
+                                       
+                       Advisor :  Rikip Ginanjar, M.Sc.
+                                       
+
+
+                                 Submitted for
+                            Capstone Design Project
+                        to Faculty of Computer Science
+                             President University
+                                       
+                               TABLE OF CONTENT
+  STATEMENT OF ORIGINALITY ............................................................................... i
+  APPROVAL SHEET ..................................................................................................... ii
+  A. PROBLEM FORMULATION .................................................................................. 1
+   Background of the Problem ............................................................................ 1
+   Problem from a Customer Perspective ........................................................... 3
+   Problem Statement .......................................................................................... 5
+ Objective ......................................................................................................... 6
+B. PROBLEM ANALYSIS ........................................................................................... 7
+ Aspect 1: Operational (Monitoring and Maintenance) ................................... 7
+   Aspect 2: Technical (Equipment Reliability) ................................................. 8
+   Aspect 3: Infrastructure and Integration ......................................................... 9
+   Aspect 4: Data and Response Time ................................................................ 10
+   Aspect 5: Scalability and Efficiency ................................................................ 11
+  C. SOLUTION SELECTION & SCENARIOS ............................................................. 12
+  D. DEVELOPMENT EFFORT ..................................................................................... 17
+   Manpower Details ........................................................................................... 17
+   Development Tools ......................................................................................... 20
+   Test Equipment ............................................................................................... 23
+   Expert Needs ................................................................................................... 25
+   Cost Estimation ............................................................................................... 26
+   Timelines ........................................................................................................ 27
+  REFERENCES .............................................................................................................. 28
+
+                                       
+                                       
+
+
+
+
+
+
+                           STATEMENT OF ORIGINALITY
+                                       
+In my capacity as an active student at President University and as the author of the Capstone Design Project stated below:
+Name			: 1. Anugrah Ananda Rivai  -  001202300178
+			  2. Sarahwati  -  001202300146
+			  3. Victoria Astra Nawa  -  001202300095
+Faculty			: Computer Science
+I hereby declare that my Capstone Design Project entitled "IoT-Based Smart CCTV and Environmental Monitoring System for Shelter with Machine Learning Detection and Real-Time Notification" is to the best of my knowledge and belief, an original piece of work based on sound academic principles. If there is any plagiarism detected in this final project, I am willing to be personally responsible for the consequences of these acts of plagiarism and will accept the sanctions against these acts in accordance with the rules and policies of President University.
+I also declare that this work, either in whole or in part, has not been submitted to another university to obtain a degree.
+
+                                                                 Cikarang, 2025
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Signer 1
+--------------------------------------------------------------------------------
+Signer 2
+--------------------------------------------------------------------------------
+Signer 3
+                                       
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Anugrah Ananda Rivai  -  001202300178
+--------------------------------------------------------------------------------
+Sarahwati  -  001202300146
+--------------------------------------------------------------------------------
+Victoria Astra Nawa  -  001202300095
+--------------------------------------------------------------------------------
+
+IoT-Based Smart CCTV and Environmental Monitoring System for Shelter with Machine Learning Detection and Real-Time Notification
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Approved:
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+
+
+
+
+
+ 
+
+                               Rikip Ginanjar, M.Sc.
+                                 Capstone Advisor
+
+ 
+
+                              Rosalina, S.Kom., M.Kom.
+                          Program Head of Informatics
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    Prof. Dr. Ir. Wiranto Herry Utomo, M.Kom.
+                       Dean of Faculty of Computer Science
+                            A. PROBLEM FORMULATION
+
+
+ --------------------------------------------------------------------------------
+Background of the Problem
+   Telecommunication shelters are vital infrastructure facilities that function as locations for operating and protecting network equipment, including GPON (Gigabit Passive Optical Network) devices, to ensure reliable and continuous telecommunication services. For a company such as Telkom, the condition of the shelter has a significant impact on the quality of services delivered to customers. Challenges faced in the shelter can impact network reliability and customer experience.
+   From the customer's perspective, problems inside the shelter are not physically visible, however, their impacts are clearly experienced. Customers may encounter unstable internet connections, reduced service quality, increased latency, or sudden service interruptions. These conditions disrupt customer activities and reduce confidence in the reliability of the services provided.
+   One of the primary engineering problems in telecommunication shelters is suboptimal temperature management. Network equipment, particularly GPON devices such as OLTs and optical modules, is highly sensitive to environmental temperature. Uncontrolled temperature increases inside the shelter can lead to performance degradation, transmission instability, and automatic shutdowns as protective mechanisms. From the customer's point of view, this results in unexpected service disruptions without prior indication.
+   In addition to temperature, excessive vibration within the shelter is another engineering issue that can affect the reliability of GPON equipment. Vibration may be caused by heavy vehicle traffic around the shelter, nearby mechanical activities, or structural conditions of the shelter itself. Continuous vibration can loosen fiber optic connectors, disturb the stability of optical modules, and degrade GPON transmission quality.
+   From the customer perspective, the impact of vibration is often experienced as intermittent service disturbances, such as frequent connection drops, sudden signal quality degradation, increased packet loss, or loss of signal (LOS) events. These issues are difficult to identify because they do not always coincide with visible hardware failures.
+   The lack of real-time monitoring systems for shelter conditions, particularly temperature and vibration, makes early detection of these problems challenging. As a result, maintenance actions tend to be reactive, occurring only after customers experience service degradation. Therefore, an engineering solution is required to continuously and real-time monitor temperature and vibration within Telkom shelters to maintain GPON equipment stability, minimize service disruptions, and improve overall customer experience.
+--------------------------------------------------------------------------------
+
+ Problem from a Customer Perspective
+   From Telkom's perspective as the operator and owner of telecommunication shelters, maintaining the reliability and integrity of shelter infrastructure is a critical operational responsibility. Telkom manages a large number of shelters that are geographically distributed across wide areas, many of which are located in remote or difficult-to-access locations. Due to these conditions, continuous 24/7 on-site supervision by technicians is not feasible.
+   The absence of continuous physical monitoring increases the risk that abnormal environmental conditions inside the shelter, such as elevated temperature and excessive vibration, may go undetected for extended periods. From Telkom's operational standpoint, this creates potential vulnerabilities that can lead to equipment degradation, reduced lifespan of GPON devices, and increased likelihood of network-related incidents if not addressed promptly.
+   Furthermore, the wide distance between shelter locations limits the efficiency of manual inspection and reactive maintenance. When environmental issues are detected late, Telkom may face increased maintenance costs, unplanned corrective actions, and higher operational workload for technical teams. These challenges highlight the difficulty of ensuring consistent shelter conditions using conventional monitoring approaches.
+   As a result, Telkom requires a preventive and centralized approach to monitor shelter conditions in order to reduce the probability of network disturbances and physical damage to GPON equipment. The lack of continuous supervision at geographically dispersed shelter sites emphasizes the need for a remote monitoring solution that supports proactive maintenance and operational efficiency.
+
+ --------------------------------------------------------------------------------
+Problem Statement
+--------------------------------------------------------------------------------
+   
+ Telkom operates telecommunication shelters that are geographically distributed across wide areas, making continuous 24/7 on-site supervision by technicians impractical.
+ Due to this limitation, environmental conditions inside the shelter, particularly temperature and vibration, cannot be monitored in real time using conventional methods.
+ Uncontrolled temperature and excessive vibration have the potential to accelerate the degradation of GPON equipment, reduce equipment lifespan, and increase the risk of equipment damage within the shelter.
+ Detection of abnormal shelter conditions is often delayed, resulting in reactive maintenance actions rather than preventive measures.
+ The absence of an integrated monitoring system limits Telkom's ability to perform proactive infrastructure management and efficient technical decision-making.
+
+
+ --------------------------------------------------------------------------------
+Objective
+--------------------------------------------------------------------------------
+   
+ To design and implement a continuous and real-time monitoring system for temperature and vibration in telecommunication shelters.
+ To enable early detection of abnormal environmental conditions that may affect GPON equipment.
+ To reduce the likelihood of network disturbances and physical damage to shelter equipment caused by temperature and vibration factors.
+ To support preventive maintenance strategies and improve operational efficiency for technical teams.
+ To provide accurate and reliable shelter condition data to support engineering analysis and maintenance planning.
+
+
+
+
+
+                              B. PROBLEM ANALYSIS
+
+   1. Aspect 1: Operational (Monitoring and Maintenance)
+   Telecommunication shelters are distributed across wide geographical areas, making continuous 24/7 on-site monitoring by technicians impractical. This operational limitation constrains Telkom's ability to directly observe shelter conditions such as temperature and vibration in real time. As a result, abnormal conditions may not be detected immediately, increasing the risk of delayed maintenance actions. Any proposed solution must address the limitation of manual supervision and support remote, continuous monitoring.
+   2. Aspect 2: Technical (Equipment Reliability)
+   GPON equipment installed inside the shelter is sensitive to environmental factors, particularly excessive temperature and vibration. These conditions can accelerate equipment degradation and reduce operational lifespan. The technical constraint lies in detecting environmental changes that may affect equipment reliability without interfering with existing network operations. Therefore, the solution must be technically compatible with current GPON infrastructure and capable of providing accurate and reliable measurements.
+   3. Aspect 3: Infrastructure and Integration
+   Shelter monitoring solutions must be integrated into existing shelter infrastructure without requiring major physical modifications. Space limitations, power availability, and existing layout constraints restrict the type of monitoring devices that can be installed. This aspect limits the design flexibility of the system and requires a compact, non-intrusive, and easily deployable solution.
+   4. Aspect 4: Data and Response Time
+   Timely data availability is critical for preventive maintenance. Delays in data transmission or lack of real-time alerts reduce the effectiveness of monitoring and increase the likelihood of equipment damage. This constraint highlights the need for reliable data communication and fast response mechanisms to support early decision-making by Telkom's technical teams.
+   5. Aspect 5: Scalability and Efficiency
+   Telkom manages a large number of shelters with limited operational resources. The monitoring solution must be scalable to support multiple shelter locations while maintaining efficiency in data management and system maintenance. This aspect constrains the solution to be centralized, manageable, and cost-efficient when deployed at scale.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+
+                     C. SOLUTION SELECTION & SCENARIOS
+
+Alternative Solution 1 - Smart CCTV System with AI-Based Human Detection
+The solution is given to the problem.
+In this alternative, CCTV cameras are enhanced with artificial intelligence to detect human presence and identify whether a person is authorized or unauthorized. The system automatically analyzes video footage and sends alerts when suspicious activity is detected. This solution improves security compared to traditional CCTV but focuses mainly on visual monitoring and does not address environmental and vibration-based risks that directly affect GPON equipment reliability.
+
+Alternative Solution 2 - Periodic Data Logging with Offline Analysis 
+This solution uses sensors to record vibration and environmental data continuously but stores the data locally in a data logger. Technicians retrieve the data periodically for offline analysis to identify trends and equipment issues. While this approach is low-cost and simple, it does not support real-time monitoring or immediate alerts, making it unsuitable for preventing sudden failures or security incidents.
+
+Alternative Solution 3 - IoT-Based Environmental and Vibration Monitoring with AI
+This solution integrates vibration sensors and environmental sensors with an IoT communication system to continuously monitor GPON shelter conditions. The collected data is transmitted in real time to a central server where an AI model analyzes vibration patterns and environmental trends. The AI classifies the cause of vibration, such as human activity, vehicle movement, or seismic events, and predicts the potential risk of G-PON equipment damage. In addition, CCTV cameras are used as visual sensors to support the AI analysis by providing visual confirmation of human presence and activities inside the shelter. When high-risk conditions are detected, the system automatically sends alerts to maintenance teams through a messaging platform and displays the results on a web-based dashboard.
+This approach focuses on proactive maintenance and risk prediction rather than reactive monitoring.
+
+
+
+Solution Selection
+Based on the three alternatives, Alternative Solution 3  -  IoT-Based Environmental and Vibration Monitoring with AI is selected.
+Alternative Solution 1 is limited by its reliance on manual monitoring and delayed response. Alternative Solution 2 improves security through intelligent CCTV but does not address the primary technical risks faced by GPON equipment, such as vibration and environmental conditions. Alternative Solution 3 provides a more comprehensive and scalable solution by directly monitoring the physical factors that affect GPON reliability while also utilizing camera sensors as visual support to validate detected activities and applying AI to analyze patterns and predict potential damage. Therefore, this solution is chosen as the most appropriate approach for improving GPON shelter monitoring and maintenance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                             D. DEVELOPMENT EFFORT
+
+   Manpower Details
+The project is developed by three team members with clearly defined main roles, responsibilities, and contributions, aligned with their respective technical specializations. System integration, testing, and validation are conducted collaboratively by all team members to ensure overall system reliability and performance.
+IoT Engineer 1 
+Main Role:
+Development of the vibration monitoring subsystem, backend services, and CCTV hardware integration.
+Responsibilities:
+ Integrate and configure vibration sensor hardware with ESP32
+ Acquire, preprocess, and transmit vibration data using MQTT/HTTP protocols
+ Design and implement backend services using Flask
+ Develop and manage database schema for vibration and event data
+ Implement real-time alert notifications via Telegram Bot
+ Integrate CCTV camera module at the hardware and backend level
+ Collaborate with IoT Engineer 2 on CCTV data handling and system integration
+Contributions:
+ Enables continuous vibration monitoring and backend system stability
+ Provides real-time alerts for abnormal vibration conditions
+ Ensures reliable integration of CCTV camera data into the system
+IoT Engineer 2 
+Main Role:
+Development of the temperature monitoring subsystem, full-stack web application, and CCTV system integration.
+Responsibilities:
+ Integrate and configure temperature sensors for real-time environmental monitoring
+ Transmit temperature data to backend services
+ Develop full-stack web dashboard for system monitoring and data visualization
+ Implement backend API integration for environmental and CCTV data
+ Design user interfaces for alert and monitoring features
+ Integrate CCTV camera module at the application and data level
+ Collaborate with IoT Engineer 1 to ensure synchronized CCTV functionality
+Contributions:
+ Provides real-time visibility of shelter temperature conditions
+ Enables centralized monitoring through an interactive web dashboard
+ Ensures CCTV data is accessible and usable within the monitoring system
+AI Engineer
+Main Role:
+ Development and integration of machine learning models for intelligent data analysis and face recognition.
+Responsibilities:
+ Prepare and manage datasets for face recognition and vibration pattern analysis
+ Design, train, and evaluate face recognition models for employee and non-employee detection
+ Develop vibration pattern classification models to identify potential risk conditions
+ Optimize machine learning models for real-time inference
+ Integrate ML inference results with backend services
+ Validate accuracy and reliability of deployed models
+Contributions:
+ Enables intelligent face recognition using CCTV data
+ Adds automated classification of vibration patterns
+ Enhances the system with data-driven analysis and decision support
+
+   Development Tools
+Programming Languages
+ Python 3.10
+Used for backend services, Raspberry Pi sensor integration, CCTV camera handling, and machine learning inference.
+ JavaScript (ES6)
+Used for frontend web dashboard development and dynamic client-side interactions.
+ Arduino C/C++
+Used for sensor module prototyping and microcontroller programming via Arduino IDE.
+Backend Framework
+ Flask
+Used to develop RESTful APIs for communication between IoT devices, machine learning modules, and the web dashboard.
+Frontend Technologies
+ HTML5
+Used for structuring the web-based monitoring dashboard.
+ CSS3
+Used for styling and layout of the user interface.
+ JavaScript (ES6)
+Used for consuming backend APIs, dynamic data rendering, and real-time dashboard updates.
+ Chart.js 
+   Used for visualization of temperature and vibration data.
+AI / Machine Learning Libraries
+ OpenCV 4.x
+Used for image processing and CCTV camera frame handling.
+ PyTorch 2.x or TensorFlow 2.x
+Used for training and deploying machine learning models for face recognition and vibration pattern classification.
+ Scikit-learn 1.x
+Used for vibration data preprocessing and machine learning utilities.
+IoT Communication Protocols
+ MQTT
+Used for lightweight, real-time transmission of sensor telemetry and event messages.
+ HTTP/REST
+Used for CCTV image or frame upload and API communication between edge devices and backend services.
+Database Systems
+ PostgreSQL 15.x
+Used as the primary relational database for structured data storage, including sensor data, events, and system logs.
+ Firebase
+Used to support real-time event triggering and notification services.
+Deployment & Version Control
+ Docker 24.x
+Used to containerize backend services and ensure consistent deployment environments.
+ Nginx 1.24
+Used as a reverse proxy and web server for backend and dashboard services.
+ GitHub (Git)
+Used for version control and collaborative development.
+Development Environment
+ Visual Studio Code
+Used as the primary development environment for backend, frontend, and machine learning development.
+ Arduino IDE 2.x
+Used for microcontroller programming and sensor module prototyping.
+ Ubuntu 22.04 LTS
+Used as the main operating system for development and server deployment.
+
+   Test Equipment
+Hardware
+   Raspberry Pi Development Board
+Used as edge device for sensor integration, CCTV camera handling, and data transmission.
+   Raspberry Pi Camera Module
+Used for capturing image snapshots for the smart CCTV and face recognition system.
+   ESP32 Development Board
+  Used as a dedicated vibration sensor node deployed close to GPON equipment.
+   Vibration Sensor Module
+Used to acquire vibration data for monitoring and pattern classification.
+   Temperature Sensor Module
+Used to measure and monitor real-time temperature conditions inside the shelter.
+   Power Supply, Jumper Wires, and Breadboard
+Used to support hardware prototyping, testing, and stable power delivery.
+   Wi-Fi Router / Access Point
+Used to provide network connectivity for IoT devices during system testing.
+Software
+   Postman
+Used to test RESTful APIs and validate backend communication.
+   MQTT Explorer
+Used to monitor, publish, and debug MQTT-based sensor data transmission.
+   Web Browser (Chrome / Firefox)
+Used to test dashboard functionality, data visualization, and user interface behavior.
+   Telegram Application
+Used to test real-time notification and alert delivery.
+   Python Debugging Tools
+Used to verify sensor data processing and backend service behavior.
+
+ --------------------------------------------------------------------------------
+  Expert Needs
+This project does not require full-time involvement of external experts. The development process is primarily guided by peer-reviewed journals, academic publications, and technical literature relevant to IoT systems, machine learning, and telecommunication infrastructure.
+Academic references are used to support system design decisions in the areas of IoT-based environmental monitoring, vibration analysis using machine learning, and face recognition for CCTV-based surveillance. These references ensure that the selected methods, models, and system architecture are aligned with established research and best practices.
+In addition, limited consultation may be conducted with academic supervisors or technical practitioners, such as telecommunication technicians, to validate the feasibility of the system and ensure that the monitored parameters are relevant to real-world GPON shelter conditions.
+This approach ensures that the project is grounded in both scientific research and practical considerations, while remaining feasible within the scope of a capstone design project.
+
+
+
+
+
+
+
+
+   Cost Estimation
+--------------------------------------------------------------------------------
+No
+--------------------------------------------------------------------------------
+Component
+--------------------------------------------------------------------------------
+Quantity
+--------------------------------------------------------------------------------
+Estimated Cost
+--------------------------------------------------------------------------------
+1
+--------------------------------------------------------------------------------
+Raspberry Pi 3 Model B/B+ (Temperature & CCTV)
+--------------------------------------------------------------------------------
+1 unit
+--------------------------------------------------------------------------------
+IDR 600,000
+--------------------------------------------------------------------------------
+2
+--------------------------------------------------------------------------------
+Raspberry Pi Camera Module
+--------------------------------------------------------------------------------
+1 unit
+--------------------------------------------------------------------------------
+IDR 350,000
+--------------------------------------------------------------------------------
+3
+--------------------------------------------------------------------------------
+MicroSD Card 32GB (Class 10)
+--------------------------------------------------------------------------------
+1 unit
+IDR 100,000
+--------------------------------------------------------------------------------
+4
+--------------------------------------------------------------------------------
+Power Adapter, Cables, and Casing (Raspberry Pi)
+--------------------------------------------------------------------------------
+1 set
+IDR 150,000
+--------------------------------------------------------------------------------
+5
+--------------------------------------------------------------------------------
+ESP32 Development Board (Vibration Node)
+--------------------------------------------------------------------------------
+1 unit
+IDR 120,000
+--------------------------------------------------------------------------------
+6
+--------------------------------------------------------------------------------
+Vibration Sensor
+                                    1 unit
+--------------------------------------------------------------------------------
+IDR 30,000
+--------------------------------------------------------------------------------
+7
+--------------------------------------------------------------------------------
+Temperature Sensor
+                                    1 unit
+--------------------------------------------------------------------------------
+IDR 70,000
+--------------------------------------------------------------------------------
+8
+--------------------------------------------------------------------------------
+Additional Accessories (jumper wires, connectors, mounting)
+--------------------------------------------------------------------------------
+1 set
+--------------------------------------------------------------------------------
+IDR 100,000
+--------------------------------------------------------------------------------
+9
+--------------------------------------------------------------------------------
+VPS Hosting (Backend, Database, Dashboard  -  3 months)
+--------------------------------------------------------------------------------
+1 package
+--------------------------------------------------------------------------------
+IDR 450,000
+--------------------------------------------------------------------------------
+10
+--------------------------------------------------------------------------------
+Domain (System demonstration)
+--------------------------------------------------------------------------------
+1 year
+IDR 150,000
+--------------------------------------------------------------------------------
+Total
+--------------------------------------------------------------------------------
+IDR 2,120,000
+
+
+
+
+
+
+
+
+
+
+   Timelines
+--------------------------------------------------------------------------------
+Task/Week
+--------------------------------------------------------------------------------
+1-2
+--------------------------------------------------------------------------------
+3-4
+--------------------------------------------------------------------------------
+5-6
+--------------------------------------------------------------------------------
+7-8
+--------------------------------------------------------------------------------
+9-10
+--------------------------------------------------------------------------------
+11-12
+--------------------------------------------------------------------------------
+13-14
+--------------------------------------------------------------------------------
+15
+--------------------------------------------------------------------------------
+16
+--------------------------------------------------------------------------------
+Requirement Analysis & Planning
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+System Architecture Design
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Raspberry Pi & ESP32 Setup
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Vibration & Temperature Sensor Integration
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+CCTV Camera Integration
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Backend Development (Flask & Database)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+API Implementation & Data Handling
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Machine Learning Development
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Web Dashboard Development
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Frontend-Backend Integration
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+System Integration
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Notification System Integration
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+System Testing & Validation
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Documentation & Final Submission
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+●
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+
+                                  REFERENCES
+                                       
+Ullo, S. L., & Sinha, G. R. (2020). Advances in smart environment monitoring systems using IoT and sensors. Sensors, 20(11), 3113.  [HYPERLINK: https://doi.org/10.3390/s20113113]https://doi.org/10.3390/s20113113
+Narayana, T. L., Venkatesh, C., Kiran, A., J, C. B., Kumar, A., Khan, S. B., Almusharraf, A., & Quasim, M. T. (2024). Advances in real-time smart monitoring of environmental parameters using IoT and sensors. Heliyon.  [HYPERLINK: https://doi.org/10.1016/j.heliyon.2024.e28195]https://doi.org/10.1016/j.heliyon.2024.e28195
+Alotaibi, E., & Nassif, N. (2024). Artificial intelligence in environmental monitoring: In-depth analysis. Discover Artificial Intelligence, 4, Article 84. https://doi.org/10.1007/s44163-024-00198-1
+Wilk-Jakubowski, J. L., Pawlik, Ł., Frej, D., & Wilk-Jakubowski, G. (2025). The evolution of machine learning in vibration and acoustics: A decade of innovation (2015 - 2024). Applied Sciences, 15(12), 6549.  [HYPERLINK: https://doi.org/10.3390/app15126549]https://doi.org/10.3390/app15126549
+Singh, A., Bhatt, S., Nayak, V., & Shah, M. (2022). Automation of surveillance systems using deep learning and facial recognition. International Journal of System Assurance Engineering and Management. https://doi.org/10.1007/s13198-022-01844-6
+El Fadel, N. (2025). Facial recognition algorithms: A systematic literature review. Journal of Imaging, 11(2), 58. https://doi.org/10.3390/jimaging11020058
+Amirgaliyev, B., Mussabek, M., Rakhimzhanova, T., & Zhumadillayeva, A. (2025). A review of machine learning and deep learning methods for person detection, tracking and identification, and face recognition with applications. Sensors, 25(5), 1410.  [HYPERLINK: https://doi.org/10.3390/s25051410]https://doi.org/10.3390/s25051410
+Abid, M. M., Mahmood, T., Ashraf, R., Faisal, C. M. N., Ahmad, H., & Niaz, A. A. (2024). Computationally intelligent real-time security surveillance system using deep learning. PLOS ONE, 19(7), e0301908. https://doi.org/10.1371/journal.pone.0301908
+

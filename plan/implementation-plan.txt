@@ -1,0 +1,1159 @@
+IoT-Based Smart CCTV and Environmental Monitoring System - Implementation Plan
+
+Project Overview
+
+Title: IoT-Based Smart CCTV and Environmental Monitoring System for Shelter with Machine Learning Detection and Real-Time Notification
+
+Hardware Configuration:
+┌───────────────────────────────────────
+├─ Device: ESP32
+├─ Quantity: 2 pcs
+└─ Function: Sensor nodes (SHT31-D temp + MPU6050 vibration)
+────────────────────────────────────────
+┌───────────────────────────────────────
+├─ Device: Raspberry Pi Zero 2W
+├─ Quantity: 1 pcs
+└─ Function: CCTV controller with Pi Camera Module
+────────────────────────────────────────
+┌───────────────────────────────────────
+├─ Device: SHT31-D
+├─ Quantity: 1 pcs
+└─ Function: Temperature & Humidity sensor
+────────────────────────────────────────
+┌───────────────────────────────────────
+├─ Device: MPU6050
+├─ Quantity: 1 pcs
+└─ Function: Accelerometer/Gyroscope (vibration)
+────────────────────────────────────────
+┌───────────────────────────────────────
+├─ Device: Pi Camera Module
+├─ Quantity: 1 pcs
+└─ Function: CCTV evidence capture
+────────────────────────────────────────
+
+---
+
+Technology Stack
+
+Backend
+
+- Framework: Flask 3.x (Python)
+- Database: Supabase PostgreSQL (with connection pooler)
+- ORM: SQLAlchemy 2.x
+- Real-time: Supabase Realtime
+- MQTT: Eclipse Mosquitto + paho-mqtt (with TLS)
+- ML: Scikit-learn 1.x
+- Auth: Supabase Auth + JWT (hybrid)
+- Notification: python-telegram-bot
+- Supabase Client: supabase-py
+- Rate Limiting: Flask-Limiter
+
+Frontend
+
+- Framework: React 18.x (Vite)
+- State: Zustand / React Query
+- Charts: Chart.js (react-chartjs-2)
+- UI: TailwindCSS + shadcn/ui
+- Real-time: Supabase Realtime Subscriptions
+- Auth: Supabase Auth UI / Custom
+- HTTP: Axios
+- Supabase Client: @supabase/supabase-js
+
+Firmware (Separate Folder)
+
+- ESP32: PlatformIO (C++)
+- RPi Zero 2W: Python 3
+
+---
+
+Project Structure
+
+shelter-monitoring-system/
+├── backend/                                    # Flask backend
+│   ├── app.py                                  # Main entry point
+│   ├── config.py                               # Config management
+│   ├── requirements.txt
+│   ├── .env                                    # Environment variables
+│   ├── models/                                 # SQLAlchemy models
+│   │   ├── user.py
+│   │   ├── shelter.py
+│   │   ├── device.py
+│   │   ├── sensor_data.py
+│   │   ├── threshold.py
+│   │   ├── alert.py
+│   │   └── evidence.py
+│   ├── routes/                                 # API blueprints
+│   │   ├── auth.py                             # POST /login, /register
+│   │   ├── shelters.py                         # CRUD shelters
+│   │   ├── devices.py                          # CRUD devices
+│   │   ├── telemetry.py                        # GET /telemetry/latest, /history
+│   │   ├── alerts.py                           # GET /alerts, PUT /alerts/:id/status
+│   │   ├── evidence.py                         # POST /upload, GET /evidence
+│   │   ├── dashboard.py                        # GET /dashboard/overview, /realtime
+│   │   └── admin.py                            # User/Threshold management
+│   ├── services/
+│   │   ├── supabase_client.py                  # Supabase client init
+│   │   ├── supabase_realtime.py                # Supabase Realtime broadcast
+│   │   ├── mqtt_subscriber.py                  # MQTT broker connection
+│   │   ├── telegram_notifier.py                # Telegram bot
+│   │   ├── ml_classifier.py                    # Risk classification
+│   │   ├── alert_manager.py                    # Alert generation logic
+│   │   └── image_processor.py                  # Face detection (OpenCV)
+│   ├── middleware/
+│   │   ├── rate_limiter.py                     # Rate limiting
+│   │   ├── error_handler.py                    # Global error handling
+│   │   └── auth_middleware.py                  # JWT verification
+│   ├── tasks/
+│   │   ├── data_cleanup.py                     # Scheduled cleanup
+│   │   └── health_check.py                     # System health
+│   ├── utils/
+│   │   ├── jwt_handler.py
+│   │   ├── validators.py
+│   │   └── retry_helper.py                     # Retry logic
+│   └── ml_models/
+│       ├── risk_classifier.pkl
+│       └── train_risk_model.py
+│
+├── frontend/                                   # React frontend
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── index.html
+│   ├── src/
+│   │   ├── main.jsx                            # React entry
+│   │   ├── App.jsx                             # Root component
+│   │   ├── lib/                                # Supabase client
+│   │   │   └── supabase.js                     # Supabase client init
+│   │   ├── pages/
+│   │   │   ├── Login.jsx
+│   │   │   ├── Dashboard.jsx                   # Main monitoring
+│   │   │   ├── Alerts.jsx
+│   │   │   ├── Evidence.jsx
+│   │   │   ├── Devices.jsx
+│   │   │   └── Admin.jsx                       # User/Threshold config
+│   │   ├── components/
+│   │   │   ├── layout/
+│   │   │   │   ├── Header.jsx
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   └── ProtectedRoute.jsx
+│   │   │   ├── dashboard/
+│   │   │   │   ├── GaugeCard.jsx               # Temp/Vib gauges
+│   │   │   │   ├── StatusCard.jsx              # Risk level, alerts
+│   │   │   │   ├── SensorChart.jsx             # Chart.js graphs
+│   │   │   │   └── AlertFeed.jsx               # Recent alerts
+│   │   │   ├── alerts/
+│   │   │   │   ├── AlertTable.jsx
+│   │   │   │   ├── AlertDetail.jsx
+│   │   │   │   └── AlertFilters.jsx
+│   │   │   ├── evidence/
+│   │   │   │   ├── EvidenceGallery.jsx
+│   │   │   │   ├── ImageLightbox.jsx
+│   │   │   │   └── FaceDetectionBadge.jsx
+│   │   │   └── common/
+│   │   │       ├── ErrorBoundary.jsx
+│   │   │       ├── LoadingSpinner.jsx
+│   │   │       └── StatusBadge.jsx
+│   │   ├── hooks/
+│   │   │   ├── useAuth.js                      # Auth state (Supabase)
+│   │   │   ├── useTelemetry.js                 # Real-time sensor data
+│   │   │   ├── useAlerts.js                    # Alert management
+│   │   │   ├── useSupabase.js                  # Supabase queries
+│   │   │   └── useRealtime.js                  # Supabase Realtime subscriptions
+│   │   ├── services/
+│   │   │   └── api.js                          # Axios client
+│   │   ├── stores/
+│   │   │   └── authStore.js                    # Zustand auth store
+│   │   └── utils/
+│   │       └── constants.js
+│   └── public/
+│
+├── firmware/                                   # Separate folder
+│   ├── esp32_sht31/                            # ESP32 #1 - Temperature
+│   │   ├── src/
+│   │   │   ├── main.cpp
+│   │   │   ├── sht31_driver.cpp
+│   │   │   ├── mqtt_client.cpp
+│   │   │   └── ota_handler.cpp                 # OTA updates
+│   │   ├── platformio.ini
+│   │   └── config.h
+│   ├── esp32_mpu6050/                          # ESP32 #2 - Vibration
+│   │   ├── src/
+│   │   │   ├── main.cpp
+│   │   │   ├── mpu6050_driver.cpp
+│   │   │   ├── mqtt_client.cpp
+│   │   │   └── ota_handler.cpp                 # OTA updates
+│   │   ├── platformio.ini
+│   │   └── config.h
+│   └── rpi_camera/                             # RPi Zero 2W - CCTV
+│       ├── camera_controller.py
+│       ├── mqtt_listener.py
+│       ├── face_detection.py
+│       ├── supabase_uploader.py                # Direct to Supabase Storage
+│       ├── config.py
+│       └── requirements.txt
+│
+├── supabase/                                   # Supabase configuration
+│   ├── migrations/
+│   │   ├── 001_init_schema.sql
+│   │   ├── 002_rls_policies.sql                # Row Level Security
+│   │   ├── 003_storage_buckets.sql             # Storage setup
+│   │   └── 004_seed_data.sql
+│   ├── functions/                              # Supabase Edge Functions
+│   │   └── handle-telemetry/
+│   │       └── index.ts
+│   └── types/                                  # TypeScript types
+│       └── database.types.ts                   # Generated types
+│
+├── deployment/
+│   ├── docker/
+│   │   ├── Dockerfile.backend
+│   │   ├── Dockerfile.frontend
+│   │   └── docker-compose.yml
+│   ├── nginx/
+│   │   └── nginx.conf
+│   └── mosquitto/                              # MQTT config
+│       ├── mosquitto.conf
+│       └── acl.conf
+│
+├── docs/
+│   ├── API.md
+│   ├── MQTT_PROTOCOL.md
+│   ├── DEPLOYMENT.md
+│   └── SUPABASE_SETUP.md
+│
+└── README.md
+
+---
+
+Database Schema (PostgreSQL on Supabase)
+
+Enable required extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_cron";  -- For scheduled tasks
+
+Users (integrates with Supabase Auth)
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    supabase_user_id UUID REFERENCES auth.users(id),  -- Link to Supabase Auth
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    role VARCHAR(20) CHECK (role IN ('admin', 'technician')) DEFAULT 'technician',
+    telegram_chat_id VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Shelters
+CREATE TABLE shelters (
+    shelter_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    shelter_name VARCHAR(100) NOT NULL,
+    location VARCHAR(150) NOT NULL,
+    description TEXT,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Devices
+CREATE TABLE devices (
+    device_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
+    device_type VARCHAR(20) CHECK (device_type IN ('sensor', 'camera')),
+    device_name VARCHAR(100) NOT NULL,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'maintenance')),
+    last_seen TIMESTAMP WITH TIME ZONE,
+    metadata JSONB DEFAULT '{}',  -- Flexible device metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Thresholds (per shelter)
+CREATE TABLE thresholds (
+    threshold_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    shelter_id UUID UNIQUE REFERENCES shelters(shelter_id) ON DELETE CASCADE,
+    temp_warning FLOAT DEFAULT 35.0,
+    temp_critical FLOAT DEFAULT 40.0,
+    vibration_limit FLOAT DEFAULT 2.0,
+    humidity_warning FLOAT DEFAULT 80.0,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Sensor Data (time-series - consider partitioning)
+CREATE TABLE sensor_data (
+    data_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
+    device_id UUID REFERENCES devices(device_id),
+    temperature FLOAT NOT NULL,
+    humidity FLOAT,
+    vibration FLOAT NOT NULL,
+    risk_level VARCHAR(20) CHECK (risk_level IN ('low', 'medium', 'high')),
+    metadata JSONB DEFAULT '{}',  -- Additional sensor readings
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Alerts
+CREATE TABLE alerts (
+    alert_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
+    data_id UUID REFERENCES sensor_data(data_id),
+    alert_type VARCHAR(20) CHECK (alert_type IN ('temp', 'vibration', 'intrusion', 'offline')),
+    status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'acknowledged', 'closed')),
+    severity VARCHAR(20) CHECK (severity IN ('warning', 'critical')),
+    message TEXT,
+    assigned_to UUID REFERENCES users(user_id),
+    resolution_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    acknowledged_at TIMESTAMP WITH TIME ZONE,
+    resolved_at TIMESTAMP WITH TIME ZONE
+);
+
+CCTV Evidence (metadata only - images in Supabase Storage)
+CREATE TABLE cctv_evidence (
+    evidence_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    alert_id UUID REFERENCES alerts(alert_id) ON DELETE CASCADE,
+    storage_path VARCHAR(255) NOT NULL,  -- Supabase Storage path
+    public_url VARCHAR(500),  -- Signed URL
+    captured_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    faces_detected INTEGER DEFAULT 0,
+    face_metadata JSONB DEFAULT '[]',  -- Array of face detections
+    file_size INTEGER,  -- bytes
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Audit Log
+CREATE TABLE audit_logs (
+    log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(user_id),
+    action VARCHAR(50) NOT NULL,  -- login, create_alert, update_threshold, etc.
+    table_name VARCHAR(50),
+    record_id UUID,
+    old_values JSONB,
+    new_values JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Performance Indexes
+CREATE INDEX idx_sensor_shelter_time ON sensor_data(shelter_id, timestamp DESC);
+CREATE INDEX idx_alerts_status ON alerts(status, created_at DESC);
+CREATE INDEX idx_alerts_shelter ON alerts(shelter_id, created_at DESC);
+CREATE INDEX idx_devices_shelter ON devices(shelter_id);
+CREATE INDEX idx_evidence_alert ON cctv_evidence(alert_id);
+CREATE INDEX idx_audit_user_time ON audit_logs(user_id, timestamp DESC);
+
+Trigger for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_shelters_updated_at BEFORE UPDATE ON shelters
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_devices_updated_at BEFORE UPDATE ON devices
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER update_thresholds_updated_at BEFORE UPDATE ON thresholds
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+---
+
+Supabase Realtime Database Structure
+
+Supabase Realtime Channels
+
+// Subscribe to real-time changes
+const telemetrySubscription = supabase
+  .channel('telemetry_changes')
+  .on(
+    'postgres_changes',
+    {
+      event: '*',  // INSERT, UPDATE, DELETE
+      schema: 'public',
+      table: 'sensor_data',
+      filter: `shelter_id=eq.{shelterId}`
+    },
+    (payload) => {
+      console.log('Sensor data changed:', payload.new)
+    }
+  )
+  .subscribe()
+
+// Subscribe to alerts
+const alertsSubscription = supabase
+  .channel('alerts_changes')
+  .on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'alerts'
+    },
+    (payload) => {
+      console.log('New alert:', payload.new)
+      // Show notification
+    }
+  )
+  .subscribe()
+
+// Subscribe to device status
+const devicesSubscription = supabase
+  .channel('devices_changes')
+  .on(
+    'postgres_changes',
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'devices'
+    },
+    (payload) => {
+      console.log('Device status changed:', payload.new)
+    }
+  )
+  .subscribe()
+
+---
+
+Supabase Storage Setup (CCTV Images)
+
+Storage Bucket Configuration
+
+-- Create storage bucket for CCTV evidence
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'cctv-evidence',
+    'cctv-evidence',
+    false,  -- Private bucket
+    10485760,  -- 10MB limit
+    ARRAY['image/jpeg', 'image/png', 'image/webp']
+);
+
+Storage Folder Structure
+
+cctv-evidence/
+├── {shelter_id}/
+│   ├── {year}/
+│   │   ├── {month}/
+│   │   │   ├── {alert_id}_{timestamp}.jpg
+│   │   │   └── {alert_id}_{timestamp}_thumb.jpg
+
+Storage Policies (RLS)
+
+-- Authenticated users can view evidence
+CREATE POLICY "Authenticated users can view evidence"
+    ON storage.objects FOR SELECT
+    TO authenticated USING (bucket_id = 'cctv-evidence');
+
+-- Service role can upload evidence
+CREATE POLICY "Service role can upload evidence"
+    ON storage.objects FOR INSERT
+    WITH CHECK (bucket_id = 'cctv-evidence' AND auth.role() = 'service_role');
+
+-- Service role can delete evidence
+CREATE POLICY "Service role can delete evidence"
+    ON storage.objects FOR DELETE
+    USING (bucket_id = 'cctv-evidence' AND auth.role() = 'service_role');
+
+---
+
+Supabase Row Level Security (RLS) Policies
+
+-- Enable RLS
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shelters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sensor_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE thresholds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cctv_evidence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Users: Admins can read all, technicians can only read/update their own
+CREATE POLICY "Admins can view all users" ON users
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM users WHERE user_id = auth.uid() AND role = 'admin')
+    );
+
+CREATE POLICY "Users can update own profile" ON users
+    FOR UPDATE USING (user_id = auth.uid());
+
+-- Shelters: All authenticated users can read
+CREATE POLICY "Authenticated users can view shelters" ON shelters
+    FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admins can manage shelters" ON shelters
+    FOR ALL USING (
+        EXISTS (SELECT 1 FROM users WHERE user_id = auth.uid() AND role = 'admin')
+    );
+
+-- Devices: All authenticated can read, only admins can write
+CREATE POLICY "Authenticated users can view devices" ON devices
+    FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admins can manage devices" ON devices
+    FOR ALL USING (
+        EXISTS (SELECT 1 FROM users WHERE user_id = auth.uid() AND role = 'admin')
+    );
+
+-- Sensor Data: Service role can write, authenticated can read
+CREATE POLICY "Service role can insert sensor data" ON sensor_data
+    FOR INSERT WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Authenticated users can view sensor data" ON sensor_data
+    FOR SELECT TO authenticated USING (true);
+
+-- Alerts: Similar policies
+CREATE POLICY "Service role can insert alerts" ON alerts
+    FOR INSERT WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Authenticated users can view alerts" ON alerts
+    FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Technicians can update assigned alerts" ON alerts
+    FOR UPDATE USING (
+        auth.uid() = assigned_to OR
+        EXISTS (SELECT 1 FROM users WHERE user_id = auth.uid() AND role = 'admin')
+    );
+
+-- Thresholds: Admins only
+CREATE POLICY "Admins can manage thresholds" ON thresholds
+    FOR ALL USING (
+        EXISTS (SELECT 1 FROM users WHERE user_id = auth.uid() AND role = 'admin')
+    );
+
+-- CCTV Evidence: Read-only for authenticated
+CREATE POLICY "Authenticated users can view evidence" ON cctv_evidence
+    FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Service role can insert evidence" ON cctv_evidence
+    FOR INSERT WITH CHECK (auth.role() = 'service_role');
+
+-- Audit Logs: Insert only, admins can read
+CREATE POLICY "Service can insert audit logs" ON audit_logs
+    FOR INSERT WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Admins can view audit logs" ON audit_logs
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM users WHERE user_id = auth.uid() AND role = 'admin')
+    );
+
+---
+
+Scheduled Data Retention (pg_cron)
+
+-- Delete sensor data older than 90 days
+SELECT cron.schedule(
+    'cleanup-sensor-data',
+    '0 2 * * *',  -- 2 AM daily
+    $$DELETE FROM sensor_data WHERE timestamp < NOW() - INTERVAL '90 days'$$
+);
+
+-- Delete resolved alerts older than 1 year
+SELECT cron.schedule(
+    'cleanup-old-alerts',
+    '0 3 * * *',  -- 3 AM daily
+    $$DELETE FROM alerts WHERE status = 'closed' AND resolved_at < NOW() - INTERVAL '1 year'$$
+);
+
+-- Delete old CCTV evidence (keep 6 months)
+SELECT cron.schedule(
+    'cleanup-old-evidence',
+    '0 4 * * *',  -- 4 AM daily
+    $$
+    DELETE FROM cctv_evidence
+    WHERE created_at < NOW() - INTERVAL '6 months'
+    $$
+);
+
+---
+
+API Endpoints
+
+Authentication (Hybrid: Supabase Auth + JWT)
+
+POST   /api/auth/register            # Register (creates Supabase user + app user)
+POST   /api/auth/login               # Login (returns JWT + Supabase session)
+POST   /api/auth/logout              # Logout
+POST   /api/auth/refresh             # Refresh JWT token
+GET    /api/auth/me                  # Get current user profile
+
+Shelters
+
+GET    /api/shelters                 # List all shelters
+POST   /api/shelters                 # Create shelter (admin only)
+GET    /api/shelters/:id             # Get shelter details
+PUT    /api/shelters/:id             # Update shelter (admin only)
+DELETE /api/shelters/:id             # Delete shelter (admin only)
+GET    /api/shelters/:id/threshold   # Get shelter thresholds
+PUT    /api/shelters/:id/threshold   # Update thresholds (admin only)
+
+Devices
+
+GET    /api/devices                  # List all devices
+POST   /api/devices                  # Register device (admin only)
+GET    /api/devices/:id              # Get device details
+PUT    /api/devices/:id              # Update device (admin only)
+PUT    /api/devices/:id/status       # Update device status
+DELETE /api/devices/:id              # Delete device (admin only)
+POST   /api/devices/:id/test         # Test device connection
+
+Telemetry
+
+GET    /api/telemetry/latest         # Latest sensor data (all shelters)
+GET    /api/telemetry/latest/:shelter_id  # Latest data for specific shelter
+GET    /api/telemetry/history        # Historical data with pagination
+GET    /api/telemetry/:shelter_id/range?start=&end=  # Date range query
+GET    /api/telemetry/aggregated     # Aggregated stats (min, max, avg)
+
+Alerts
+
+GET    /api/alerts                   # List all alerts with filters
+GET    /api/alerts/open              # Only open alerts
+GET    /api/alerts/:id               # Get alert details
+PUT    /api/alerts/:id/status        # Update alert status (close/reopen)
+PUT    /api/alerts/:id/acknowledge   # Acknowledge alert
+PUT    /api/alerts/:id/assign        # Assign to technician
+PUT    /api/alerts/:id/resolve       # Resolve alert with notes
+GET    /api/alerts/stats             # Alert statistics
+
+Evidence (CCTV)
+
+GET    /api/evidence                 # List evidence with filters
+GET    /api/evidence/:id             # Get evidence details
+GET    /api/evidence/:id/download    # Get signed download URL
+POST   /api/evidence/upload          # Upload evidence (RPi / Service role)
+DELETE /api/evidence/:id             # Delete evidence (admin only)
+GET    /api/evidence/alert/:alert_id # Evidence for specific alert
+
+Dashboard
+
+GET    /api/dashboard/overview       # Summary statistics
+GET    /api/dashboard/realtime       # Current readings
+GET    /api/dashboard/charts         # Chart data (aggregated)
+GET    /api/dashboard/map            # Shelter locations data
+
+Users (Admin Only)
+
+GET    /api/users                    # List all users
+POST   /api/users                    # Create user
+GET    /api/users/:id                # Get user details
+PUT    /api/users/:id                # Update user
+PUT    /api/users/:id/role           # Update user role
+DELETE /api/users/:id                # Delete user
+PUT    /api/users/:id/telegram       # Update Telegram chat ID
+
+System (Admin Only)
+
+GET    /api/system/health            # System health check
+GET    /api/system/stats             # Database stats, active devices
+GET    /api/system/logs              # Recent audit logs
+POST   /api/system/cleanup           # Trigger manual cleanup
+GET    /api/system/config            # System configuration
+
+---
+
+MQTT Topic Structure (WITH TLS)
+
+shelter/{shelter_id}/
+├── telemetry/
+│   ├── temperature                  # ESP32 #1 publishes here
+│   ├── vibration                    # ESP32 #2 publishes here
+│   └── all                          # Combined sensor data
+├── status/
+│   ├── sensor/heartbeat             # Device heartbeat
+│   └── camera/heartbeat             # Camera heartbeat
+├── commands/
+│   ├── camera/trigger               # Backend → RPi (capture on alert)
+│   ├── sensor/calibrate             # Calibrate sensors
+│   └── sensor/restart               # Restart sensor
+└── alerts/
+    ├── temperature                  # High temp alert
+    └── vibration                    # High vibration alert
+
+Message Format
+
+Temperature Telemetry (ESP32 #1 → Backend):
+{
+    "shelter_id": "uuid-here",
+    "device_id": "uuid-here",
+    "timestamp": "2026-04-07T10:30:00Z",
+    "temperature": 32.5,
+    "humidity": 65,
+    "battery": 85,
+    "rssi": -67
+}
+Topic: shelter/{shelter_id}/telemetry/temperature
+
+Vibration Telemetry (ESP32 #2 → Backend):
+{
+    "shelter_id": "uuid-here",
+    "device_id": "uuid-here",
+    "timestamp": "2026-04-07T10:30:00Z",
+    "vibration": 0.45,
+    "accel_x": 0.02,
+    "accel_y": -0.01,
+    "accel_z": 0.98,
+    "battery": 78
+}
+Topic: shelter/{shelter_id}/telemetry/vibration
+
+Camera Trigger (Backend → RPi):
+{
+    "command": "capture",
+    "alert_id": "uuid-here",
+    "reason": "temperature_critical",
+    "shelter_id": "uuid-here"
+}
+Topic: shelter/{shelter_id}/commands/camera/trigger
+
+---
+
+Frontend Pages Structure
+
+1. Login Page (/login)
+
+- Email & password form (Supabase Auth)
+- Role-based redirect (Admin → Admin panel, Tech → Dashboard)
+- "Forgot password" integration with Supabase
+- Remember me option
+
+2. Dashboard (/dashboard)
+
+Components:
+- Shelter selector dropdown
+- Status cards:
+  - Temperature gauge (with warning/critical lines)
+  - Humidity gauge
+  - Vibration gauge
+  - Risk level badge (Low/Medium/High)
+  - Active alerts count
+- Real-time charts (last 24h):
+  - Temperature trend
+  - Vibration trend
+- Recent alerts table (live updates via Supabase Realtime)
+- Latest CCTV evidence gallery
+
+3. Alerts Page (/alerts)
+
+- Filters: date range, shelter, status, severity, type
+- Alerts table with pagination
+- Alert detail modal:
+  - Full alert info
+  - Sensor values at alert time
+  - Linked CCTV evidence
+  - Resolution notes form
+- Bulk actions: assign, close, acknowledge
+- Real-time new alert notifications
+
+4. Evidence Page (/evidence)
+
+- Gallery grid view
+- Filters: date, shelter, alert type
+- Lightbox for full-size viewing
+- Face detection results overlay
+- Download button (signed URL from Supabase)
+- Batch delete (admin only)
+
+5. Devices Page (/devices)
+
+- Device list with status indicators
+- Add device form
+- Device detail panel
+- Test connection button
+- Last seen timestamp
+- Device metadata viewer
+
+6. Admin Panel (/admin)
+
+Tabs:
+- Shelters: CRUD operations, map view
+- Users: Create, edit roles, Telegram chat ID
+- Thresholds: Configure per-shelter limits
+- System: Settings, logs, stats, cleanup
+
+7. Profile Page (/profile)
+
+- User profile editing
+- Change password (Supabase)
+- Telegram chat ID configuration
+- Notification preferences
+
+---
+
+Implementation Order
+
+Phase 1: Foundation & Supabase Setup (Week 1-2)
+
+Tasks:
+1. Supabase Project Setup:
+   - Create Supabase project
+   - Configure database schema
+   - Set up RLS policies
+   - Create storage buckets
+   - Enable required extensions
+   - Generate TypeScript types
+
+2. Backend Setup:
+   - Initialize Flask project
+   - Set up Supabase client
+   - Create base models
+   - Set up MQTT broker with TLS
+   - Configure environment variables
+
+3. Frontend Setup:
+   - Initialize React + Vite
+   - Install Supabase JS client
+   - Setup Tailwind + shadcn/ui
+   - Configure React Router
+   - Create base layout
+
+Deliverables:
+- Working Supabase project
+- Flask backend with Supabase connection
+- React frontend with routing
+- Basic authentication flow
+
+Phase 2: Authentication & Authorization (Week 2-3)
+
+Tasks:
+1. Backend:
+   - Implement Supabase Auth integration
+   - Create JWT middleware
+   - User management endpoints
+   - Role-based access control
+
+2. Frontend:
+   - Login page with Supabase Auth
+   - Protected routes
+   - Auth context/hook
+   - User profile management
+
+Deliverables:
+- Complete authentication system
+- Role-based access control
+- User profile management
+
+Phase 3: Core Monitoring (Week 3-4)
+
+Tasks:
+1. Backend:
+   - MQTT subscriber with TLS
+   - Sensor data ingestion
+   - Telemetry endpoints
+   - Supabase Realtime integration
+
+2. Frontend:
+   - Dashboard page
+   - Gauge components
+   - Chart.js integration
+   - Real-time Supabase subscriptions
+
+3. Firmware:
+   - ESP32 basic MQTT
+   - Sensor data reading
+
+Deliverables:
+- Working sensor data pipeline
+- Real-time dashboard
+- Basic ESP32 firmware
+
+Phase 4: Alert System (Week 5-6)
+
+Tasks:
+1. Backend:
+   - Threshold management
+   - Alert generation service
+   - Telegram bot integration
+   - Alert API endpoints
+   - Real-time alert broadcasting
+
+2. Frontend:
+   - Alerts page
+   - Alert table & filters
+   - Alert detail modal
+   - Real-time alert notifications
+
+Deliverables:
+- Complete alert system
+- Telegram notifications
+- Alert management UI
+
+Phase 5: CCTV Integration (Week 7-8)
+
+Tasks:
+1. Firmware (RPi):
+   - Camera control script
+   - MQTT listener
+   - Supabase Storage upload
+   - Face detection (OpenCV)
+
+2. Backend:
+   - Evidence upload handling
+   - Evidence metadata storage
+   - Signed URL generation
+   - Face detection processing
+
+3. Frontend:
+   - Evidence gallery page
+   - Image lightbox
+   - Face detection badges
+   - Download functionality
+
+Deliverables:
+- Working CCTV system
+- Evidence management
+- Face detection
+
+Phase 6: Machine Learning (Week 9-10)
+
+Tasks:
+1. Backend:
+   - ML classifier service
+   - Risk classification
+   - Training script
+   - Model integration
+
+2. Frontend:
+   - Risk level indicators
+   - ML-based alerts display
+   - Risk trend charts
+
+Deliverables:
+- Risk classification system
+- ML-powered insights
+
+Phase 7: Admin & Polish (Week 11-12)
+
+Tasks:
+1. Backend:
+   - Admin endpoints
+   - Device management
+   - System health monitoring
+   - Audit logging
+   - Scheduled cleanup tasks
+
+2. Frontend:
+   - Admin panel (all tabs)
+   - Device management page
+   - System health dashboard
+   - UI polish & responsiveness
+
+Deliverables:
+- Complete admin system
+- Device management
+- System monitoring
+
+Phase 8: Testing & Deployment (Week 13-14)
+
+Tasks:
+1. Testing:
+   - Integration tests
+   - Hardware-in-the-loop testing
+   - Load testing
+   - Security testing
+
+2. Deployment:
+   - Docker containers
+   - Nginx reverse proxy
+   - Production Supabase setup
+   - MQTT broker hardening
+   - SSL/TLS configuration
+
+3. Documentation:
+   - API documentation
+   - Deployment guide
+   - User manual
+
+Deliverables:
+- Production-ready system
+- Complete documentation
+- Test coverage
+
+---
+
+Critical Files to Create
+
+Backend
+
+1. backend/services/supabase_client.py - Supabase client initialization
+2. backend/services/supabase_realtime.py - Realtime broadcast service
+3. backend/services/mqtt_subscriber.py - MQTT with TLS
+4. backend/services/alert_manager.py - Alert generation
+5. backend/services/ml_classifier.py - Risk classification
+6. backend/middleware/rate_limiter.py - Rate limiting
+7. backend/middleware/auth_middleware.py - JWT verification
+
+Frontend
+
+1. frontend/src/lib/supabase.js - Supabase client
+2. frontend/src/hooks/useSupabase.js - Supabase queries
+3. frontend/src/hooks/useRealtime.js - Realtime subscriptions
+4. frontend/src/hooks/useAuth.js - Supabase Auth
+5. frontend/src/pages/Dashboard.jsx - Main dashboard
+6. frontend/src/components/dashboard/SensorChart.jsx - Charts
+
+Supabase
+
+1. supabase/migrations/001_init_schema.sql - Database schema
+2. supabase/migrations/002_rls_policies.sql - Security policies
+3. supabase/migrations/003_storage_buckets.sql - Storage setup
+4. supabase/functions/handle-telemetry/index.ts - Edge function
+
+Firmware
+
+1. firmware/esp32_sht31/src/main.cpp - ESP32 temp sensor
+2. firmware/esp32_mpu6050/src/main.cpp - ESP32 vibration sensor
+3. firmware/rpi_camera/supabase_uploader.py - Direct to Supabase Storage
+4. firmware/rpi_camera/camera_controller.py - Camera control
+
+Deployment
+
+1. deployment/mosquitto/mosquitto.conf - MQTT with TLS
+2. deployment/docker/docker-compose.yml - Container orchestration
+3. deployment/nginx/nginx.conf - Reverse proxy
+
+---
+
+Verification Plan
+
+Backend Testing
+
+# Unit tests
+cd backend && python -m pytest tests/
+
+# Supabase connection test
+python -c "from services.supabase_client import get_supabase; print(get_supabase().table('users').select('*').limit(1).execute())"
+
+# MQTT test with TLS
+mosquitto_pub -h localhost -p 8883 --cafile ca.crt -t "shelter/test/telemetry/temperature" -m '{"temp": 35.5}' -u mqtt_user -P mqtt_pass
+
+# API test
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@test.com", "password": "pass"}'
+
+Frontend Testing
+
+cd frontend
+npm run test          # Unit tests
+npm run build         # Production build
+npm run lint          # Linting
+
+Firmware Testing
+
+# ESP32
+cd firmware/esp32_sht31
+pio run --target upload
+
+# RPi
+cd firmware/rpi_camera
+python3 camera_controller.py --test
+python3 supabase_uploader.py --test
+
+End-to-End Test Flow
+
+1. Sensor Data Pipeline:
+   - ESP32 publishes sensor data → MQTT (TLS) → Backend stores in Supabase
+   - Verify data in Supabase dashboard
+
+2. Alert Generation:
+   - Temperature exceeds threshold → Alert generated
+   - Verify alert in database and Telegram notification
+
+3. CCTV Trigger:
+   - Backend publishes camera trigger → RPi captures image
+   - RPi uploads to Supabase Storage → Backend stores metadata
+
+4. Real-time Update:
+   - Frontend receives Supabase Realtime update → Dashboard shows alert
+   - Verify real-time notification
+
+5. Evidence Management:
+   - View evidence in frontend → Download via signed URL
+   - Verify face detection results
+
+6. Admin Operations:
+   - Create/update shelters, users, thresholds
+   - Verify RLS policies are enforced
+
+---
+
+Environment Variables
+
+Backend (.env)
+
+# Flask
+FLASK_ENV=development
+FLASK_DEBUG=1
+SECRET_KEY=your-secret-key
+
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key
+
+# JWT
+JWT_SECRET_KEY=your-jwt-secret
+JWT_ACCESS_TOKEN_EXPIRES=3600
+
+# MQTT
+MQTT_BROKER=localhost
+MQTT_PORT=8883
+MQTT_USERNAME=mqtt_user
+MQTT_PASSWORD=mqtt_password
+MQTT_CA_FILE=/path/to/ca.crt
+MQTT_CERT_FILE=/path/to/client.crt
+MQTT_KEY_FILE=/path/to/client.key
+
+# Telegram
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_CHAT_ID=your-chat-id
+
+# Application
+APP_PORT=5000
+APP_HOST=0.0.0.0
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+
+Frontend (.env)
+
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=http://localhost:5000/api
+
+---
+
+Key Features
+
+1. ✅ Supabase PostgreSQL - Primary database with connection pooler
+2. ✅ Supabase Realtime - For real-time data streaming
+3. ✅ Supabase Storage - For CCTV evidence images
+4. ✅ Supabase Auth + JWT - Hybrid authentication
+5. ✅ Row Level Security (RLS) - Database-level security
+6. ✅ MQTT with TLS - Secure IoT communication
+7. ✅ Machine Learning - Scikit-learn for risk classification
+8. ✅ Telegram Notifications - Real-time alert notifications
+9. ✅ Rate limiting - Prevent abuse
+10. ✅ Error handling middleware - Better resilience
+11. ✅ OTA updates - For ESP32 firmware
+12. ✅ Audit logging - Track all changes
+13. ✅ Health monitoring - System status tracking
+14. ✅ Scheduled cleanup - Using pg_cron for data retention
+
+---
+
+Notes
+
+- Firmware in separate folder as requested
+- React + Vite for modern frontend
+- Supabase for database, auth, realtime, and storage
+- MQTT over TLS for secure IoT communication
+- Docker for easy deployment
+- All code written from scratch
+- Comprehensive security with RLS and rate limiting
+- Scheduled data retention to manage storage costs

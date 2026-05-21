@@ -1,0 +1,11 @@
+torch
+torchvision
+torchaudio
+opencv-python
+ultralytics
+mtcnn
+deepface
+insightface
+numpy
+pillow
+matplotlib

@@ -1,0 +1,17 @@
+# Virtual Environments
+face_pipeline_env/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# Machine Learning Models (large binary files)
+models/
+
+# Application Logs (changes constantly)
+logs/
+
+# Raw Data and Images (can be very large)
+data/

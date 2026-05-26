@@ -1,0 +1,9 @@
+torch
+torchvision
+opencv-python
+deepface
+mtcnn
+insightface
+facenet-pytorch
+numpy
+Pillow

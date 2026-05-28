@@ -1,20 +1,65 @@
-import { useState } from 'react'
-import { Activity, Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Activity, Eye, EyeOff, User, Lock, AlertCircle } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/stores/authStore'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const fetchProfile = useAuthStore((state) => state.fetchProfile)
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/')
+    }
+  }, [user, navigate])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    // Mock login — will connect to Supabase later
-    setTimeout(() => {
+    setError('')
+
+    try {
+      // Look up email by name
+      const { data: userProfile, error: lookupError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('name', name)
+        .maybeSingle()
+
+      if (lookupError) throw lookupError
+      if (!userProfile) throw new Error('User not found.')
+
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: userProfile.email,
+        password,
+      })
+
+      if (authError) throw authError
+
+      // Verify if user is admin
+      const profile = await fetchProfile(data.user.id)
+
+      if (!profile || profile.role !== 'admin') {
+        await supabase.auth.signOut()
+        throw new Error('Access denied. Only administrators can login.')
+      }
+
+      navigate('/')
+    } catch (err) {
+      setError(err.message || 'An error occurred during sign in')
+      console.error('Login error:', err)
+    } finally {
       setIsLoading(false)
-      window.location.href = '/'
-    }, 1000)
+    }
   }
 
   return (
@@ -41,16 +86,23 @@ export default function Login() {
             Sign in to your account
           </h2>
 
+          {error && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-500/10 p-3 text-xs text-danger-400">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-surface-400">
-                <Mail className="h-3.5 w-3.5" /> Email
+                <User className="h-3.5 w-3.5" /> Name
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@shelter.io"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
                 className="input"
                 required
               />
@@ -81,16 +133,6 @@ export default function Login() {
                   )}
                 </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <label className="flex items-center gap-2 text-surface-400">
-                <input type="checkbox" className="rounded border-surface-600 bg-surface-900" />
-                Remember me
-              </label>
-              <button type="button" className="text-primary-400 hover:text-primary-300">
-                Forgot password?
-              </button>
             </div>
 
             <button

@@ -1,4 +1,5 @@
-import { mockAlerts, getShelterName } from '@/data/mockData'
+import { useState, useEffect } from 'react'
+import { dashboardService } from '@/services/dashboardService'
 import { timeAgo, getSeverityBadge, getStatusBadge } from '@/utils/helpers'
 import { AlertTriangle, Thermometer, Activity, Wifi, Eye } from 'lucide-react'
 
@@ -10,13 +11,35 @@ const alertTypeIcons = {
 }
 
 export default function AlertFeed({ shelterId, limit = 5 }) {
-  const alerts = shelterId
-    ? mockAlerts.filter((a) => a.shelter_id === shelterId)
-    : mockAlerts
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const recentAlerts = alerts
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, limit)
+  useEffect(() => {
+    async function fetchAlerts() {
+      setLoading(true)
+      try {
+        const filters = {}
+        if (shelterId) filters.shelter_id = shelterId
+        const data = await dashboardService.getAlerts(filters)
+        setAlerts(data)
+      } catch (error) {
+        console.error('Error fetching alerts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchAlerts()
+  }, [shelterId])
+
+  const recentAlerts = alerts.slice(0, limit)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8 text-surface-500">
+        <AlertTriangle className="h-5 w-5 animate-pulse opacity-30" />
+      </div>
+    )
+  }
 
   if (recentAlerts.length === 0) {
     return (
@@ -31,6 +54,7 @@ export default function AlertFeed({ shelterId, limit = 5 }) {
     <div className="space-y-2">
       {recentAlerts.map((alert, idx) => {
         const Icon = alertTypeIcons[alert.alert_type] || AlertTriangle
+        const shelterName = alert.shelters?.shelter_name || 'Unknown'
         return (
           <div
             key={alert.alert_id}
@@ -59,7 +83,7 @@ export default function AlertFeed({ shelterId, limit = 5 }) {
                 {alert.message}
               </p>
               <div className="mt-1 flex items-center gap-2 text-[10px] text-surface-500">
-                <span>{getShelterName(alert.shelter_id)}</span>
+                <span>{shelterName}</span>
                 <span>•</span>
                 <span>{timeAgo(alert.created_at)}</span>
               </div>

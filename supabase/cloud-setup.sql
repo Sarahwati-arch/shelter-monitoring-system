@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS cctv_evidence CASCADE;
 DROP TABLE IF EXISTS alerts CASCADE;
 DROP TABLE IF EXISTS vibration_data CASCADE;
 DROP TABLE IF EXISTS temperature_data CASCADE;
-DROP TABLE IF EXISTS sensor_data CASCADE;
+DROP TABLE IF EXISTS sensor_data CASCADE; -- legacy, may not exist
 DROP TABLE IF EXISTS thresholds CASCADE;
 DROP TABLE IF EXISTS devices CASCADE;
 DROP TABLE IF EXISTS shelters CASCADE;
@@ -70,7 +70,7 @@ CREATE TABLE shelters (
 CREATE TABLE devices (
     device_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
-    device_type VARCHAR(20) CHECK (device_type IN ('sensor', 'camera')),
+    device_type VARCHAR(20) CHECK (device_type IN ('temperature', 'vibration', 'camera')),
     device_name VARCHAR(100) NOT NULL,
     token VARCHAR(255) UNIQUE NOT NULL,
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'maintenance')),
@@ -95,7 +95,7 @@ CREATE TABLE thresholds (
 CREATE TABLE temperature_data (
     data_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
-    device_id UUID REFERENCES devices(device_id),
+    device_id UUID REFERENCES devices(device_id) ON DELETE CASCADE,
     temperature FLOAT NOT NULL,
     humidity FLOAT,
     risk_level VARCHAR(20) CHECK (risk_level IN ('low', 'medium', 'high')),
@@ -107,7 +107,7 @@ CREATE TABLE temperature_data (
 CREATE TABLE vibration_data (
     data_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
-    device_id UUID REFERENCES devices(device_id),
+    device_id UUID REFERENCES devices(device_id) ON DELETE CASCADE,
     accel_x FLOAT NOT NULL,
     accel_y FLOAT NOT NULL,
     accel_z FLOAT NOT NULL,
@@ -196,6 +196,26 @@ CREATE TRIGGER update_devices_updated_at BEFORE UPDATE ON devices
 CREATE TRIGGER update_thresholds_updated_at BEFORE UPDATE ON thresholds
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- Auto-insert user profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.users (supabase_user_id, name, email, role)
+    VALUES (
+        NEW.id,
+        COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'role', 'technician')
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- ============================================================================
 -- 6. ROW LEVEL SECURITY
 -- ============================================================================
@@ -222,6 +242,9 @@ CREATE POLICY "Users can view own profile" ON users
 
 CREATE POLICY "Users can update own profile" ON users
     FOR UPDATE USING (supabase_user_id = auth.uid());
+
+CREATE POLICY "Users can insert own profile" ON users
+    FOR INSERT WITH CHECK (supabase_user_id = auth.uid());
 
 CREATE POLICY "Admins can manage users" ON users
     FOR ALL USING (
@@ -337,11 +360,18 @@ CREATE POLICY "Service role can delete evidence"
 -- 8. SEED DATA
 -- ============================================================================
 
+-- Sample users (supabase_user_id set to NULL until linked via auth signup)
+INSERT INTO users (user_id, supabase_user_id, name, email, role) VALUES
+    ('00000000-0000-0000-0000-000000000001', NULL, 'Admin User', 'admin@shelter.local', 'admin'),
+    ('00000000-0000-0000-0000-000000000002', NULL, 'Tech Sarah', 'sarah@shelter.local', 'technician'),
+    ('00000000-0000-0000-0000-000000000003', NULL, 'Tech Budi', 'budi@shelter.local', 'technician')
+ON CONFLICT (user_id) DO NOTHING;
+
 -- Sample shelters
 INSERT INTO shelters (shelter_id, shelter_name, location, description, latitude, longitude) VALUES
-    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Shelter Alpha', 'Jl. Raya Cikarang No. 15, Bekasi', 'Main monitoring shelter near industrial zone', -6.30200000, 107.17100000),
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'Shelter Beta', 'Jl. Industri Blok A3, Karawang', 'Secondary shelter in agricultural area', -6.32300000, 107.33700000),
-    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'Shelter Gamma', 'Jl. Pergudangan Lot 7, Cikarang Utara', 'Warehouse district monitoring point', -6.28500000, 107.15800000)
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Shelter Jakarta Timur', 'Jakarta Timur', 'Main monitoring shelter near industrial zone', -6.30200000, 107.17100000),
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'Shelter Jakarta Pusat', 'Jakarta Pusat', 'Secondary shelter in agricultural area', -6.32300000, 107.33700000),
+    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'Shelter Jakarta Selatan', 'Jakarta Selatan', 'Warehouse district monitoring point', -6.28500000, 107.15800000)
 ON CONFLICT (shelter_id) DO NOTHING;
 
 -- Sample thresholds
@@ -351,12 +381,12 @@ INSERT INTO thresholds (shelter_id, temp_warning, temp_critical, vibration_limit
     ('c3d4e5f6-a7b8-9012-cdef-123456789012', 36.0, 42.0, 2.5, 75.0)
 ON CONFLICT (shelter_id) DO NOTHING;
 
--- Sample devices (3 sensors + 2 cameras)
+-- Sample devices (2 temperature + 1 vibration + 2 cameras)
 INSERT INTO devices (device_id, shelter_id, device_type, device_name, token, status) VALUES
-    ('d4e5f6a7-b8c9-0123-defa-234567890123', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'sensor', 'ESP32-TEMP-Alpha', 'tok_esp32_temp_alpha_001', 'active'),
-    ('e5f6a7b8-c9d0-1234-efab-345678901234', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'sensor', 'ESP32-VIB-Alpha', 'tok_esp32_vib_alpha_001', 'active'),
+    ('d4e5f6a7-b8c9-0123-defa-234567890123', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'temperature', 'ESP32-TEMP-Alpha', 'tok_esp32_temp_alpha_001', 'active'),
+    ('e5f6a7b8-c9d0-1234-efab-345678901234', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'vibration', 'ESP32-VIB-Alpha', 'tok_esp32_vib_alpha_001', 'active'),
     ('f6a7b8c9-d0e1-2345-fabc-456789012345', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'camera', 'RPi-CAM-Alpha', 'tok_rpi_cam_alpha_001', 'active'),
-    ('a7b8c9d0-e1f2-3456-abcd-567890123456', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', 'sensor', 'ESP32-TEMP-Beta', 'tok_esp32_temp_beta_001', 'active'),
+    ('a7b8c9d0-e1f2-3456-abcd-567890123456', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', 'temperature', 'ESP32-TEMP-Beta', 'tok_esp32_temp_beta_001', 'active'),
     ('b8c9d0e1-f2a3-4567-bcde-678901234567', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', 'camera', 'RPi-CAM-Beta', 'tok_rpi_cam_beta_001', 'inactive')
 ON CONFLICT (device_id) DO NOTHING;
 

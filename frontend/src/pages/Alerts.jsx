@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   AlertTriangle,
   Filter,
@@ -7,10 +7,11 @@ import {
   Eye,
   Wifi,
   Search,
-  ChevronDown,
   X,
+  Loader2,
+  CheckCircle2,
 } from 'lucide-react'
-import { mockAlerts, mockShelters, getShelterName } from '@/data/mockData'
+import { dashboardService } from '@/services/dashboardService'
 import { formatDateTime, timeAgo, getSeverityBadge, getStatusBadge } from '@/utils/helpers'
 
 const alertTypeIcons = {
@@ -28,23 +29,54 @@ const alertTypeLabels = {
 }
 
 export default function Alerts() {
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [severityFilter, setSeverityFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedAlert, setSelectedAlert] = useState(null)
+  const [actionLoading, setActionLoading] = useState(false)
+
+  const fetchAlerts = async () => {
+    setLoading(true)
+    try {
+      const data = await dashboardService.getAlerts({
+        status: statusFilter,
+        alert_type: typeFilter,
+        severity: severityFilter,
+      })
+      setAlerts(data)
+    } catch (error) {
+      console.error('Error fetching alerts:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAlerts()
+  }, [statusFilter, typeFilter, severityFilter])
 
   const filteredAlerts = useMemo(() => {
-    return mockAlerts
-      .filter((a) => {
-        if (statusFilter !== 'all' && a.status !== statusFilter) return false
-        if (typeFilter !== 'all' && a.alert_type !== typeFilter) return false
-        if (severityFilter !== 'all' && a.severity !== severityFilter) return false
-        if (searchQuery && !a.message.toLowerCase().includes(searchQuery.toLowerCase())) return false
-        return true
-      })
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  }, [statusFilter, typeFilter, severityFilter, searchQuery])
+    return alerts.filter((a) => {
+      if (searchQuery && !a.message.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      return true
+    })
+  }, [alerts, searchQuery])
+
+  const handleUpdateStatus = async (alertId, newStatus) => {
+    setActionLoading(true)
+    try {
+      await dashboardService.updateAlertStatus(alertId, newStatus)
+      await fetchAlerts()
+      setSelectedAlert(null)
+    } catch (error) {
+      console.error('Error updating alert:', error)
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-6 animate-[fade-in_0.3s_ease-out]">
@@ -104,8 +136,9 @@ export default function Alerts() {
       </div>
 
       {/* Results Count */}
-      <div className="text-xs text-surface-500">
-        Showing {filteredAlerts.length} of {mockAlerts.length} alerts
+      <div className="flex items-center justify-between text-xs text-surface-500">
+        <span>Showing {filteredAlerts.length} alerts</span>
+        {loading && <Loader2 className="h-3 w-3 animate-spin text-primary-500" />}
       </div>
 
       {/* Alerts Table */}
@@ -134,14 +167,14 @@ export default function Alerts() {
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-surface-800/30">
               {filteredAlerts.map((alert) => {
                 const Icon = alertTypeIcons[alert.alert_type] || AlertTriangle
                 return (
                   <tr
                     key={alert.alert_id}
                     onClick={() => setSelectedAlert(alert)}
-                    className="cursor-pointer border-b border-surface-800/30 transition-colors hover:bg-surface-800/30"
+                    className="cursor-pointer transition-colors hover:bg-surface-800/30"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -157,7 +190,7 @@ export default function Alerts() {
                       </p>
                     </td>
                     <td className="px-4 py-3 text-xs text-surface-400">
-                      {getShelterName(alert.shelter_id)}
+                      {alert.shelters?.shelter_name || 'Unknown'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`badge text-[10px] ${getSeverityBadge(alert.severity)}`}>
@@ -179,10 +212,10 @@ export default function Alerts() {
           </table>
         </div>
 
-        {filteredAlerts.length === 0 && (
+        {!loading && filteredAlerts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-surface-500">
-            <AlertTriangle className="mb-2 h-8 w-8 opacity-30" />
-            <p className="text-sm">No alerts match your filters</p>
+            <CheckCircle2 className="mb-2 h-8 w-8 text-emerald-500/30" />
+            <p className="text-sm">No alerts found</p>
           </div>
         )}
       </div>
@@ -213,7 +246,7 @@ export default function Alerts() {
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
                   <p className="text-surface-500">Shelter</p>
-                  <p className="font-medium text-surface-300">{getShelterName(selectedAlert.shelter_id)}</p>
+                  <p className="font-medium text-surface-300">{selectedAlert.shelters?.shelter_name}</p>
                 </div>
                 <div>
                   <p className="text-surface-500">Type</p>
@@ -228,9 +261,26 @@ export default function Alerts() {
                   <p className="font-medium text-surface-300 capitalize">{selectedAlert.status}</p>
                 </div>
               </div>
+              
               <div className="flex gap-2 pt-2">
-                <button className="btn btn-primary flex-1">Acknowledge</button>
-                <button className="btn btn-ghost flex-1">Close Alert</button>
+                {selectedAlert.status === 'open' && (
+                  <button 
+                    disabled={actionLoading}
+                    onClick={() => handleUpdateStatus(selectedAlert.alert_id, 'acknowledged')}
+                    className="btn btn-primary flex-1"
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Acknowledge'}
+                  </button>
+                )}
+                {selectedAlert.status !== 'closed' && (
+                  <button 
+                    disabled={actionLoading}
+                    onClick={() => handleUpdateStatus(selectedAlert.alert_id, 'closed')}
+                    className="btn btn-ghost flex-1"
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Close Alert'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

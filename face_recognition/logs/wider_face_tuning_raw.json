@@ -1,0 +1,224 @@
+{
+  "0.7": [
+    {
+      "image": "angled_00_49_Greeting_peoplegreeting_49_307.jpg",
+      "category": "angled",
+      "threshold": 0.7,
+      "raw_count": 4,
+      "valid_count": 4,
+      "alert_flag": false,
+      "top_conf": 0.9986
+    },
+    {
+      "image": "angled_01_12_Group_Large_Group_12_Group_Large_Group_12_354.jpg",
+      "category": "angled",
+      "threshold": 0.7,
+      "raw_count": 4,
+      "valid_count": 4,
+      "alert_flag": false,
+      "top_conf": 0.9989
+    },
+    {
+      "image": "angled_02_0_Parade_marchingband_1_78.jpg",
+      "category": "angled",
+      "threshold": 0.7,
+      "raw_count": 0,
+      "valid_count": 0,
+      "alert_flag": true,
+      "top_conf": 0.0
+    },
+    {
+      "image": "angled_03_6_Funeral_Funeral_6_696.jpg",
+      "category": "angled",
+      "threshold": 0.7,
+      "raw_count": 21,
+      "valid_count": 21,
+      "alert_flag": false,
+      "top_conf": 1.0
+    },
+    {
+      "image": "occluded_00_26_Soldier_Drilling_Soldiers_Drilling_26_307.jpg",
+      "category": "occluded",
+      "threshold": 0.7,
+      "raw_count": 1,
+      "valid_count": 1,
+      "alert_flag": false,
+      "top_conf": 0.9999
+    },
+    {
+      "image": "occluded_01_23_Shoppers_Shoppers_23_65.jpg",
+      "category": "occluded",
+      "threshold": 0.7,
+      "raw_count": 1,
+      "valid_count": 1,
+      "alert_flag": false,
+      "top_conf": 0.99
+    },
+    {
+      "image": "occluded_02_21_Festival_Festival_21_378.jpg",
+      "category": "occluded",
+      "threshold": 0.7,
+      "raw_count": 16,
+      "valid_count": 16,
+      "alert_flag": false,
+      "top_conf": 1.0
+    },
+    {
+      "image": "occluded_03_2_Demonstration_Political_Rally_2_5.jpg",
+      "category": "occluded",
+      "threshold": 0.7,
+      "raw_count": 15,
+      "valid_count": 15,
+      "alert_flag": false,
+      "top_conf": 0.9986
+    }
+  ],
+  "0.8": [
+    {
+      "image": "angled_00_49_Greeting_peoplegreeting_49_307.jpg",
+      "category": "angled",
+      "threshold": 0.8,
+      "raw_count": 4,
+      "valid_count": 4,
+      "alert_flag": false,
+      "top_conf": 0.9986
+    },
+    {
+      "image": "angled_01_12_Group_Large_Group_12_Group_Large_Group_12_354.jpg",
+      "category": "angled",
+      "threshold": 0.8,
+      "raw_count": 4,
+      "valid_count": 4,
+      "alert_flag": false,
+      "top_conf": 0.9989
+    },
+    {
+      "image": "angled_02_0_Parade_marchingband_1_78.jpg",
+      "category": "angled",
+      "threshold": 0.8,
+      "raw_count": 0,
+      "valid_count": 0,
+      "alert_flag": true,
+      "top_conf": 0.0
+    },
+    {
+      "image": "angled_03_6_Funeral_Funeral_6_696.jpg",
+      "category": "angled",
+      "threshold": 0.8,
+      "raw_count": 21,
+      "valid_count": 21,
+      "alert_flag": false,
+      "top_conf": 1.0
+    },
+    {
+      "image": "occluded_00_26_Soldier_Drilling_Soldiers_Drilling_26_307.jpg",
+      "category": "occluded",
+      "threshold": 0.8,
+      "raw_count": 1,
+      "valid_count": 1,
+      "alert_flag": false,
+      "top_conf": 0.9999
+    },
+    {
+      "image": "occluded_01_23_Shoppers_Shoppers_23_65.jpg",
+      "category": "occluded",
+      "threshold": 0.8,
+      "raw_count": 1,
+      "valid_count": 1,
+      "alert_flag": false,
+      "top_conf": 0.99
+    },
+    {
+      "image": "occluded_02_21_Festival_Festival_21_378.jpg",
+      "category": "occluded",
+      "threshold": 0.8,
+      "raw_count": 16,
+      "valid_count": 16,
+      "alert_flag": false,
+      "top_conf": 1.0
+    },
+    {
+      "image": "occluded_03_2_Demonstration_Political_Rally_2_5.jpg",
+      "category": "occluded",
+      "threshold": 0.8,
+      "raw_count": 15,
+      "valid_count": 15,
+      "alert_flag": false,
+      "top_conf": 0.9986
+    }
+  ],
+  "0.9": [
+    {
+      "image": "angled_00_49_Greeting_peoplegreeting_49_307.jpg",
+      "category": "angled",
+      "threshold": 0.9,
+      "raw_count": 4,
+      "valid_count": 4,
+      "alert_flag": false,
+      "top_conf": 0.9986
+    },
+    {
+      "image": "angled_01_12_Group_Large_Group_12_Group_Large_Group_12_354.jpg",
+      "category": "angled",
+      "threshold": 0.9,
+      "raw_count": 4,
+      "valid_count": 4,
+      "alert_flag": false,
+      "top_conf": 0.9989
+    },
+    {
+      "image": "angled_02_0_Parade_marchingband_1_78.jpg",
+      "category": "angled",
+      "threshold": 0.9,
+      "raw_count": 0,
+      "valid_count": 0,
+      "alert_flag": true,
+      "top_conf": 0.0
+    },
+    {
+      "image": "angled_03_6_Funeral_Funeral_6_696.jpg",
+      "category": "angled",
+      "threshold": 0.9,
+      "raw_count": 21,
+      "valid_count": 21,
+      "alert_flag": false,
+      "top_conf": 1.0
+    },
+    {
+      "image": "occluded_00_26_Soldier_Drilling_Soldiers_Drilling_26_307.jpg",
+      "category": "occluded",
+      "threshold": 0.9,
+      "raw_count": 1,
+      "valid_count": 1,
+      "alert_flag": false,
+      "top_conf": 0.9999
+    },
+    {
+      "image": "occluded_01_23_Shoppers_Shoppers_23_65.jpg",
+      "category": "occluded",
+      "threshold": 0.9,
+      "raw_count": 1,
+      "valid_count": 1,
+      "alert_flag": false,
+      "top_conf": 0.99
+    },
+    {
+      "image": "occluded_02_21_Festival_Festival_21_378.jpg",
+      "category": "occluded",
+      "threshold": 0.9,
+      "raw_count": 16,
+      "valid_count": 12,
+      "alert_flag": false,
+      "top_conf": 1.0
+    },
+    {
+      "image": "occluded_03_2_Demonstration_Political_Rally_2_5.jpg",
+      "category": "occluded",
+      "threshold": 0.9,
+      "raw_count": 15,
+      "valid_count": 10,
+      "alert_flag": false,
+      "top_conf": 0.9986
+    }
+  ]
+}

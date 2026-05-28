@@ -11,3 +11,21 @@ c) **Recognition failure:** The system failed to process the face for recognitio
 ## Output Format
 Alerts will be output in the following format:
 `[timestamp] + [camera_id] + [alert_type] + [frame_snapshot_path]`
+
+Camera Frame
+    │
+    ▼
+[Stage 1 — MTCNN]
+    │
+    ├─ No face / conf < threshold ──► alert_type = "no_face_detected"  [stage=1]
+    │
+    └─ Face detected
+           │
+           ▼
+       [Stage 2 — ArcFace embedding]
+           │
+           ├─ Exception / bad crop ──────► alert_type = "recognition_failure" [stage=2]
+           │
+           ├─ Similarity < threshold ────► alert_type = "unknown_person"      [stage=2]
+           │
+           └─ Match found ──────────────► alert_flag = False  (log only)

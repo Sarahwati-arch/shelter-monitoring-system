@@ -133,7 +133,7 @@ export default function Dashboard() {
       </div>
 
       {/* Status Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatusCard
           title="Risk Level"
           value={riskLevel.toUpperCase()}
@@ -154,13 +154,6 @@ export default function Dashboard() {
           subtitle="Connected devices"
           icon={Cpu}
           color={deviceStats.active === deviceStats.total && deviceStats.total > 0 ? 'success' : 'warning'}
-        />
-        <StatusCard
-          title="Avg Temperature"
-          value={latest ? `${latest.temperature}°C` : '--'}
-          subtitle="Latest reading"
-          icon={TrendingUp}
-          color="info"
         />
       </div>
 

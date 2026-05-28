@@ -8,7 +8,7 @@ export const dashboardService = {
     const { data, error } = await supabase
       .from('shelters')
       .select('*')
-      .order('shelter_name')
+      .order('shelter_name', { ascending: false })
     
     if (error) throw error
     return data || []
@@ -268,6 +268,19 @@ export const dashboardService = {
   },
 
   /**
+   * Get all users
+   */
+  async getUsers() {
+    const { data, error } = await supabase
+      .from('users')
+      .select('user_id, name, email, role, telegram_chat_id, created_at')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
+  },
+
+  /**
    * Get all devices
    */
   async getDevices(shelterId = null) {
@@ -306,5 +319,75 @@ export const dashboardService = {
       total: data.length,
       active: data.filter(d => d.status === 'active').length
     }
+  },
+
+  /**
+   * Create a new device
+   */
+  async createDevice(deviceData) {
+    const { data, error } = await supabase
+      .from('devices')
+      .insert([deviceData])
+      .select(`
+        *,
+        shelters (shelter_name)
+      `)
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  /**
+   * Update a device
+   */
+  async updateDevice(deviceId, updates) {
+    const { data, error } = await supabase
+      .from('devices')
+      .update(updates)
+      .eq('device_id', deviceId)
+      .select(`
+        *,
+        shelters (shelter_name)
+      `)
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  /**
+   * Update device status only
+   */
+  async updateDeviceStatus(deviceId, status) {
+    return this.updateDevice(deviceId, { status })
+  },
+
+  /**
+   * Delete a device
+   */
+  async deleteDevice(deviceId) {
+    const { error } = await supabase
+      .from('devices')
+      .delete()
+      .eq('device_id', deviceId)
+
+    if (error) throw error
+  },
+
+  /**
+   * Get recent readings for a device based on its type
+   */
+  async getDeviceReadings(deviceId, deviceType, limit = 20) {
+    const table = deviceType === 'temperature' ? 'temperature_data' : 'vibration_data'
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('device_id', deviceId)
+      .order('timestamp', { ascending: false })
+      .limit(limit)
+
+    if (error) throw error
+    return data || []
   }
 }

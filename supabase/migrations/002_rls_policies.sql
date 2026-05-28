@@ -7,7 +7,8 @@
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shelters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sensor_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE temperature_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vibration_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE thresholds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cctv_evidence ENABLE ROW LEVEL SECURITY;
@@ -27,6 +28,9 @@ CREATE POLICY "Users can view own profile" ON users
 
 CREATE POLICY "Users can update own profile" ON users
     FOR UPDATE USING (supabase_user_id = auth.uid());
+
+CREATE POLICY "Users can insert own profile" ON users
+    FOR INSERT WITH CHECK (supabase_user_id = auth.uid());
 
 CREATE POLICY "Admins can manage users" ON users
     FOR ALL USING (
@@ -58,13 +62,23 @@ CREATE POLICY "Admins can manage devices" ON devices
     );
 
 -- ============================================
--- SENSOR DATA POLICIES
+-- TEMPERATURE DATA POLICIES
 -- ============================================
 
-CREATE POLICY "Service role can insert sensor data" ON sensor_data
+CREATE POLICY "Service role can insert temperature data" ON temperature_data
     FOR INSERT WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY "Authenticated users can view sensor data" ON sensor_data
+CREATE POLICY "Authenticated users can view temperature data" ON temperature_data
+    FOR SELECT TO authenticated USING (true);
+
+-- ============================================
+-- VIBRATION DATA POLICIES
+-- ============================================
+
+CREATE POLICY "Service role can insert vibration data" ON vibration_data
+    FOR INSERT WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Authenticated users can view vibration data" ON vibration_data
     FOR SELECT TO authenticated USING (true);
 
 -- ============================================

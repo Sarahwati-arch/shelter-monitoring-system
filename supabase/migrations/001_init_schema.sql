@@ -39,7 +39,7 @@ CREATE TABLE shelters (
 CREATE TABLE devices (
     device_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
-    device_type VARCHAR(20) CHECK (device_type IN ('sensor', 'camera')),
+    device_type VARCHAR(20) CHECK (device_type IN ('temperature', 'vibration', 'camera')),
     device_name VARCHAR(100) NOT NULL,
     token VARCHAR(255) UNIQUE NOT NULL,
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'maintenance')),
@@ -60,14 +60,29 @@ CREATE TABLE thresholds (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Sensor Data (time-series)
-CREATE TABLE sensor_data (
+-- Temperature Data (time-series)
+CREATE TABLE temperature_data (
     data_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
-    device_id UUID REFERENCES devices(device_id),
+    device_id UUID REFERENCES devices(device_id) ON DELETE CASCADE,
     temperature FLOAT NOT NULL,
     humidity FLOAT,
-    vibration FLOAT NOT NULL,
+    risk_level VARCHAR(20) CHECK (risk_level IN ('low', 'medium', 'high')),
+    metadata JSONB DEFAULT '{}',
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Vibration Data (time-series)
+CREATE TABLE vibration_data (
+    data_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
+    device_id UUID REFERENCES devices(device_id) ON DELETE CASCADE,
+    accel_x FLOAT NOT NULL,
+    accel_y FLOAT NOT NULL,
+    accel_z FLOAT NOT NULL,
+    gyro_x FLOAT NOT NULL,
+    gyro_y FLOAT NOT NULL,
+    gyro_z FLOAT NOT NULL,
     risk_level VARCHAR(20) CHECK (risk_level IN ('low', 'medium', 'high')),
     metadata JSONB DEFAULT '{}',
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -77,7 +92,8 @@ CREATE TABLE sensor_data (
 CREATE TABLE alerts (
     alert_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE CASCADE,
-    data_id UUID REFERENCES sensor_data(data_id),
+    temp_data_id UUID REFERENCES temperature_data(data_id) ON DELETE SET NULL,
+    vibration_data_id UUID REFERENCES vibration_data(data_id) ON DELETE SET NULL,
     alert_type VARCHAR(20) CHECK (alert_type IN ('temp', 'vibration', 'intrusion', 'offline')),
     status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'acknowledged', 'closed')),
     severity VARCHAR(20) CHECK (severity IN ('warning', 'critical')),
@@ -120,12 +136,16 @@ CREATE TABLE audit_logs (
 -- INDEXES
 -- ============================================
 
-CREATE INDEX idx_sensor_shelter_time ON sensor_data(shelter_id, timestamp DESC);
 CREATE INDEX idx_alerts_status ON alerts(status, created_at DESC);
 CREATE INDEX idx_alerts_shelter ON alerts(shelter_id, created_at DESC);
 CREATE INDEX idx_devices_shelter ON devices(shelter_id);
 CREATE INDEX idx_evidence_alert ON cctv_evidence(alert_id);
 CREATE INDEX idx_audit_user_time ON audit_logs(user_id, timestamp DESC);
+CREATE INDEX idx_devices_type ON devices(device_type);
+CREATE INDEX idx_temperature_shelter_time ON temperature_data(shelter_id, timestamp DESC);
+CREATE INDEX idx_temperature_device ON temperature_data(device_id);
+CREATE INDEX idx_vibration_shelter_time ON vibration_data(shelter_id, timestamp DESC);
+CREATE INDEX idx_vibration_device ON vibration_data(device_id);
 
 -- ============================================
 -- TRIGGERS

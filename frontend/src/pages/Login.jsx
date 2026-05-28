@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Activity, Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react'
+import { Activity, Eye, EyeOff, User, Lock, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  
+
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const fetchProfile = useAuthStore((state) => state.fetchProfile)
@@ -28,8 +28,18 @@ export default function Login() {
     setError('')
 
     try {
+      // Look up email by name
+      const { data: userProfile, error: lookupError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('name', name)
+        .maybeSingle()
+
+      if (lookupError) throw lookupError
+      if (!userProfile) throw new Error('User not found.')
+
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: userProfile.email,
         password,
       })
 
@@ -37,7 +47,7 @@ export default function Login() {
 
       // Verify if user is admin
       const profile = await fetchProfile(data.user.id)
-      
+
       if (!profile || profile.role !== 'admin') {
         await supabase.auth.signOut()
         throw new Error('Access denied. Only administrators can login.')
@@ -86,13 +96,13 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-surface-400">
-                <Mail className="h-3.5 w-3.5" /> Email
+                <User className="h-3.5 w-3.5" /> Name
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@shelter.io"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
                 className="input"
                 required
               />

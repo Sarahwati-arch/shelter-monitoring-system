@@ -8,10 +8,23 @@ export const dashboardService = {
     const { data, error } = await supabase
       .from('shelters')
       .select('*')
-      .order('shelter_name', { ascending: false })
     
     if (error) throw error
-    return data || []
+
+    // Custom sort: East -> Central -> West
+    const order = {
+      'East Jakarta shelter': 1,
+      'Central Jakarta shelter': 2,
+      'West Jakarta shelter': 3
+    }
+
+    const sortedData = (data || []).sort((a, b) => {
+      const orderA = order[a.shelter_name] || 99
+      const orderB = order[b.shelter_name] || 99
+      return orderA - orderB
+    })
+
+    return sortedData
   },
 
   /**
@@ -64,7 +77,8 @@ export const dashboardService = {
       humidity: tempData?.humidity || 0,
       vibration: vibrationMagnitude,
       risk_level: tempData?.risk_level || vibData?.risk_level || 'low',
-      timestamp: tempData?.timestamp || vibData?.timestamp || null
+      timestamp: tempData?.timestamp || vibData?.timestamp || null,
+      vibration_metadata: vibData?.metadata || {}
     }
   },
 
@@ -101,7 +115,7 @@ export const dashboardService = {
         .order('timestamp', { ascending: true }),
       supabase
         .from('vibration_data')
-        .select('timestamp, accel_x, accel_y, accel_z')
+        .select('timestamp, accel_x, accel_y, accel_z, metadata')
         .eq('shelter_id', shelterId)
         .gte('timestamp', timeAgo.toISOString())
         .order('timestamp', { ascending: true })
@@ -124,7 +138,8 @@ export const dashboardService = {
         timestamp: t.timestamp,
         temperature: t.temperature,
         humidity: t.humidity,
-        vibration: vibrationMagnitude
+        vibration: vibrationMagnitude,
+        metadata: v?.metadata || {}
       }
     })
 

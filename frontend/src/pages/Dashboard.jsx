@@ -5,7 +5,6 @@ import {
   Activity,
   AlertTriangle,
   Shield,
-  Cpu,
   TrendingUp,
   Camera,
   Loader2,
@@ -14,6 +13,7 @@ import GaugeCard from '@/components/dashboard/GaugeCard'
 import StatusCard from '@/components/dashboard/StatusCard'
 import SensorChart from '@/components/dashboard/SensorChart'
 import CCTVFeed from '@/components/dashboard/CCTVFeed'
+import AIVibrationCard from '@/components/dashboard/AIVibrationCard'
 import { dashboardService } from '@/services/dashboardService'
 
 export default function Dashboard() {
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [thresholds, setThresholds] = useState(null)
   const [sensorData, setSensorData] = useState([])
   const [alertStats, setAlertStats] = useState({ total: 0, open: 0 })
-  const [deviceStats, setDeviceStats] = useState({ total: 0, active: 0 })
+
 
   // Initial Fetch: Shelters
   useEffect(() => {
@@ -57,21 +57,18 @@ export default function Dashboard() {
         latestReading,
         currentThresholds,
         history,
-        stats,
-        devices
+        stats
       ] = await Promise.all([
         dashboardService.getLatestReading(selectedShelter),
         dashboardService.getThresholds(selectedShelter),
         dashboardService.getSensorHistory(selectedShelter, chartHours),
-        dashboardService.getAlertStats(selectedShelter),
-        dashboardService.getDeviceStats(selectedShelter)
+        dashboardService.getAlertStats(selectedShelter)
       ])
 
       setLatest(latestReading)
       setThresholds(currentThresholds)
       setSensorData(history)
       setAlertStats(stats)
-      setDeviceStats(devices)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -133,7 +130,7 @@ export default function Dashboard() {
       </div>
 
       {/* Status Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatusCard
           title="Risk Level"
           value={riskLevel.toUpperCase()}
@@ -148,17 +145,10 @@ export default function Dashboard() {
           icon={AlertTriangle}
           color={alertStats.open > 2 ? 'danger' : alertStats.open > 0 ? 'warning' : 'success'}
         />
-        <StatusCard
-          title="Active Devices"
-          value={`${deviceStats.active}/${deviceStats.total}`}
-          subtitle="Connected devices"
-          icon={Cpu}
-          color={deviceStats.active === deviceStats.total && deviceStats.total > 0 ? 'success' : 'warning'}
-        />
       </div>
 
       {/* Gauge Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <GaugeCard
           label="Temperature"
           value={latest?.temperature || 0}
@@ -252,15 +242,25 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* CCTV Feed */}
+          <div className="glass-card p-5">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-surface-200">
+              <Camera className="h-4 w-4 text-primary-400" />
+              CCTV Camera
+            </h3>
+            <CCTVFeed shelterId={selectedShelter} limit={4} />
+          </div>
         </div>
 
-        {/* CCTV Feed */}
-        <div className="glass-card p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-surface-200">
-            <Camera className="h-4 w-4 text-primary-400" />
-            CCTV Camera
-          </h3>
-          <CCTVFeed shelterId={selectedShelter} limit={4} />
+        {/* Right Column: AI Diagnostics */}
+        <div className="space-y-6">
+
+          {/* AI Diagnostics Card */}
+          <AIVibrationCard 
+            latestMetadata={latest?.vibration_metadata} 
+            sensorData={sensorData} 
+          />
         </div>
       </div>
     </div>

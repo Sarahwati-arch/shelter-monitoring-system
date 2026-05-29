@@ -1,4 +1,4 @@
-import { Bell, Search, ChevronDown, Sun, Moon, LogOut, User as UserIcon } from 'lucide-react'
+import { Bell, ChevronDown, Sun, Moon, LogOut, User as UserIcon } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
 import { useState, useEffect } from 'react'
 import { timeAgo } from '@/utils/helpers'
@@ -51,15 +51,7 @@ export default function Header({ title }) {
 
       {/* Right Actions */}
       <div className="flex items-center gap-3">
-        {/* Search */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-500" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="input w-64 pl-9 text-sm"
-          />
-        </div>
+
 
         {/* Theme Toggle */}
         <button

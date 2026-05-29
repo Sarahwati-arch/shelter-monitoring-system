@@ -55,6 +55,7 @@ else:
 CLASS_NAMES = {0: "Normal/AC", 1: "Footsteps", 2: "Sabotage/Maintenance", 3: "Vehicle", 4: "Earthquake"}
 CLASS_RISK_MAP = {0: "low", 1: "low", 2: "high", 3: "medium", 4: "critical"}
 _ai_buffers: dict = {}
+_last_ai_metadata: dict = {}
 
 def extract_features_from_signal(signal):
     if len(signal) == 0: return np.zeros(14)
@@ -281,7 +282,9 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
 
     conventional_risk = calc_risk_level(accel_x, accel_y, accel_z)
     final_risk = conventional_risk
-    metadata = {}
+    
+    # Use the last known AI metadata for this device as the base
+    metadata = _last_ai_metadata.get(device_id, {}).copy()
     
     # Calculate magnitude and buffer
     magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
@@ -301,16 +304,19 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
                 max_prob = float(np.max(probs))
                 
                 if max_prob < 0.60:
-                    metadata = {"ai_label": "Unknown", "ai_confidence": max_prob, "ai_fallback": True}
+                    metadata = {"ai_label": "Unknown", "ai_confidence": max_prob, "ai_fallback": True, "ai_window_size": 50}
                     final_risk = conventional_risk
                 else:
-                    metadata = {"ai_label": CLASS_NAMES.get(pred_class, "Unknown"), "ai_confidence": max_prob, "ai_fallback": False}
+                    metadata = {"ai_label": CLASS_NAMES.get(pred_class, "Unknown"), "ai_confidence": max_prob, "ai_fallback": False, "ai_window_size": 50}
                     final_risk = CLASS_RISK_MAP.get(pred_class, conventional_risk)
             except Exception as e:
                 print(f"  -> AI PREDICTION ERROR: {e}")
                 metadata = {"ai_fallback": True, "error": str(e)}
         else:
             metadata = {"ai_fallback": True, "reason": "Model not loaded"}
+            
+        # Update cache
+        _last_ai_metadata[device_id] = metadata
         
         # Reset buffer
         _ai_buffers[device_id] = []
@@ -370,14 +376,16 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         print(f"Connected to MQTT broker {MQTT_BROKER}:{MQTT_PORT}")
-        # Subscribe to all topics
-        client.subscribe("#")
-        print("Subscribed to: #")
+        # Public brokers often block root '#' subscriptions, use '+' instead
+        client.subscribe("+/Accel")
+        client.subscribe("+/Gyro")
+        print("Subscribed to: +/Accel, +/Gyro")
     else:
         print(f"MQTT connection failed with code: {reason_code}")
 
 
 def on_message(client, userdata, msg):
+    print(f"DEBUG: received message on {msg.topic}")
     topic = msg.topic
     # Expecting: <device_token>/<sensor_type> (e.g. tok_esp32_temp_alpha_001/Temp)
     parts = topic.split('/')

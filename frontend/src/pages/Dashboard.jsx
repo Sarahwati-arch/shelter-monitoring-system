@@ -78,6 +78,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData()
+    
+    // Auto-refresh every 5 seconds
+    const interval = setInterval(() => {
+      fetchDashboardData()
+    }, 5000)
+    
+    return () => clearInterval(interval)
   }, [fetchDashboardData])
 
   const shelter = useMemo(() => 

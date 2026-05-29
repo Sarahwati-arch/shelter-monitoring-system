@@ -103,9 +103,14 @@ export default function AIVibrationCard({ latestMetadata, sensorData }) {
             <div className="flex justify-between items-end mb-2">
               <div>
                 <p className="text-xs text-surface-400 mb-1">Detected Class</p>
-                <p className="text-lg font-bold text-surface-100">
-                  {latestMetadata.ai_label || 'Unknown'}
-                </p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-lg font-bold text-surface-100">
+                    {latestMetadata.ai_label || 'Unknown'}
+                  </p>
+                  <p className="text-[10px] text-surface-500">
+                    (based on {latestMetadata.ai_window_size || 50} samples)
+                  </p>
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-xs text-surface-400 mb-1">Confidence</p>

@@ -33,6 +33,7 @@ import argparse
 import numpy as np
 from pathlib import Path
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from mtcnn import MTCNN
 
 # ─────────────────────────────────────────────
@@ -70,70 +71,58 @@ detector = MTCNN()
 print("MTCNN ready.\n")
 
 # ─────────────────────────────────────────────
-# Optional: DeepFace recognition
+# Stage 2 recognition — FaceRecognizer
 # ─────────────────────────────────────────────
 
 def load_recognizer():
     """
-    Returns a recognition function if DeepFace is available
-    and data/faces/ contains at least one enrolled person.
-    Otherwise returns None.
+    Returns a FaceRecognizer instance if embeddings are available.
+    Falls back gracefully if Stage 2 hasn't been enrolled yet.
+
+    Uses aggregated voting + margin enforcement to avoid confusion
+    between similar-looking identities (e.g. Sarah / Nanda).
     """
+    # Check enrolled photos exist (any extension)
+    extensions = {".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"}
+    enrolled = [
+        p for p in FACES_DIR.rglob("*")
+        if p.suffix in extensions and p.parent != FACES_DIR
+    ]
+    if not enrolled:
+        print(f"  WARNING: No enrolled faces found in {FACES_DIR}")
+        print("  Add photos: data/faces/<name>/photo_001.jpg")
+        print("  Then run:   python src/stage2/stage2_face_recognition.py enroll")
+        print("  Recognition will be skipped.\n")
+        return None
+
+    identities = set(p.parent.name for p in enrolled)
+    print(f"  Found {len(enrolled)} enrolled image(s) across "
+          f"{len(identities)} identit(ies): {sorted(identities)}")
+
+    # Load Stage 2 FaceRecognizer
     try:
-        import deepface  # noqa: F401
-        enrolled = list(FACES_DIR.glob("*/*.jpg")) + list(FACES_DIR.glob("*/*.png"))
-        if not enrolled:
-            print(f"  WARNING: No enrolled faces found in {FACES_DIR}")
-            print("  Add photos: data/faces/<your_name>/photo.jpg")
-            print("  Recognition will be skipped.\n")
-            return None
-        print(f"  Found {len(enrolled)} enrolled images across "
-              f"{len(set(p.parent.name for p in enrolled))} identities.")
-        return _recognize_face
-    except ImportError:
-        print("  DeepFace not installed — recognition disabled.")
+        sys.path.insert(0, str(BASE_DIR / "src"))
+        from stage2.stage2_face_recognition import FaceRecognizer
+        recognizer = FaceRecognizer()
+        print("  Stage 2 FaceRecognizer loaded (aggregated voting + margin check).\n")
+        return recognizer
+    except FileNotFoundError:
+        print("  Embeddings not found — run enrollment first:")
+        print("  python src/stage2/stage2_face_recognition.py enroll\n")
+        return None
+    except Exception as e:
+        print(f"  Stage 2 load failed: {e}")
+        print("  Recognition will be skipped.\n")
         return None
 
 
-def _recognize_face(face_rgb: np.ndarray) -> tuple[str, float]:
+def _recognize_face(recognizer, face_rgb: np.ndarray) -> tuple[str, float]:
     """
-    Run DeepFace ArcFace recognition on a cropped face.
-
-    Returns:
-        (identity_name, confidence_score)
-        identity_name is "unknown" if no match found.
+    Wrapper around FaceRecognizer.identify() that returns the
+    (identity, similarity_score) tuple webcam_test expects.
     """
-    from deepface import DeepFace
-    import tempfile, os
-    from PIL import Image
-
-    # DeepFace.find() needs a file path — write crop to temp file
-    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-        tmp_path = tmp.name
-        Image.fromarray(face_rgb).save(tmp_path)
-
-    try:
-        results = DeepFace.find(
-            img_path   = tmp_path,
-            db_path    = str(FACES_DIR),
-            model_name = "ArcFace",
-            enforce_detection = False,
-            silent     = True,
-        )
-        if results and len(results[0]) > 0:
-            top = results[0].iloc[0]
-            # identity path is like data/faces/vicky/photo.jpg
-            identity = Path(top["identity"]).parent.name
-            distance = float(top["distance"])
-            # Convert distance to a 0-1 confidence-like score
-            confidence = max(0.0, 1.0 - distance)
-            return identity, round(confidence, 3)
-    except Exception:
-        pass
-    finally:
-        os.unlink(tmp_path)
-
-    return "unknown", 0.0
+    result = recognizer.identify(face_rgb)
+    return result["identity"], result["similarity"]
 
 
 # ─────────────────────────────────────────────
@@ -179,7 +168,7 @@ def process_frame(frame_bgr: np.ndarray,
         if recognizer is not None:
             face_crop = image_rgb[y1:y2, x1:x2]
             if face_crop.size > 0:
-                identity, rec_conf = recognizer(face_crop)
+                identity, rec_conf = _recognize_face(recognizer, face_crop)
                 if identity == "unknown":
                     alert_flag = True
                     alert_type = "unknown_person"

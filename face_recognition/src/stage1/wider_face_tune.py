@@ -14,6 +14,7 @@ Usage:
     python src/stage1/wider_face_tune.py --sample-dir data/environment_frames/samples/wider
 """
 
+import sys
 import json
 import argparse
 import numpy as np

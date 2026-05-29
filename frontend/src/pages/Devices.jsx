@@ -190,7 +190,7 @@ export default function Devices() {
 
       {/* Device Grid */}
       {filteredDevices.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredDevices.map((device) => {
             const Icon = deviceTypeIcons[device.device_type] || Cpu
             const isOnline = device.status === 'active'

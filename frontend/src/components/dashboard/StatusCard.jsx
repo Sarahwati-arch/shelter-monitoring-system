@@ -38,7 +38,7 @@ export default function StatusCard({ title, value, subtitle, icon: Icon, trend, 
       </div>
       <div className="min-w-0">
         <p className="text-xs font-medium text-surface-500">{title}</p>
-        <p className="text-2xl font-bold text-surface-100">{value}</p>
+        <p className="text-lg sm:text-xl xl:text-2xl font-bold text-surface-100">{value}</p>
         {subtitle && (
           <p className="text-xs text-surface-500">{subtitle}</p>
         )}

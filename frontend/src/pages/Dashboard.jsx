@@ -138,7 +138,7 @@ export default function Dashboard() {
       </div>
 
       {/* Gauge Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <GaugeCard
           label="Temperature"
           value={latest?.temperature || 0}
@@ -171,9 +171,9 @@ export default function Dashboard() {
       </div>
 
       {/* Charts + Alert Feed */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* Charts */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="xl:col-span-2 space-y-4">
           {/* Time Range Selector */}
           <div className="flex items-center gap-2">
             {[3, 6, 12, 24].map((h) => (
@@ -245,7 +245,7 @@ export default function Dashboard() {
 
         {/* Right Column: AI Diagnostics */}
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4">
             <StatusCard
               title="Temp. Risk Level"
               value={tempRiskLevel.toUpperCase()}

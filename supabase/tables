@@ -1,0 +1,512 @@
+[
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "alert_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "shelter_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "temp_data_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "vibration_data_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "alert_type",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "status",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "severity",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "message",
+        "Tipe Data": "text",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "assigned_to",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "resolution_notes",
+        "Tipe Data": "text",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "created_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "acknowledged_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "alerts",
+        "Nama Kolom": "resolved_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "log_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "user_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "action",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "table_name",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "record_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "old_values",
+        "Tipe Data": "jsonb",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "new_values",
+        "Tipe Data": "jsonb",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "ip_address",
+        "Tipe Data": "inet",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "user_agent",
+        "Tipe Data": "text",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "audit_logs",
+        "Nama Kolom": "timestamp",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "evidence_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "alert_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "storage_path",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "public_url",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "captured_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "faces_detected",
+        "Tipe Data": "integer",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "face_metadata",
+        "Tipe Data": "jsonb",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "file_size",
+        "Tipe Data": "integer",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "cctv_evidence",
+        "Nama Kolom": "created_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "device_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "shelter_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "device_type",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "device_name",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "token",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "status",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "last_seen",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "metadata",
+        "Tipe Data": "jsonb",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "created_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "devices",
+        "Nama Kolom": "updated_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "shelter_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "shelter_name",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "location",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "description",
+        "Tipe Data": "text",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "latitude",
+        "Tipe Data": "numeric",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "longitude",
+        "Tipe Data": "numeric",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "created_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "shelters",
+        "Nama Kolom": "updated_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "data_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "shelter_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "device_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "temperature",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "humidity",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "risk_level",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "metadata",
+        "Tipe Data": "jsonb",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "temperature_data",
+        "Nama Kolom": "timestamp",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "thresholds",
+        "Nama Kolom": "threshold_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "thresholds",
+        "Nama Kolom": "shelter_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "thresholds",
+        "Nama Kolom": "temp_warning",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "thresholds",
+        "Nama Kolom": "temp_critical",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "thresholds",
+        "Nama Kolom": "vibration_limit",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "thresholds",
+        "Nama Kolom": "humidity_warning",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "thresholds",
+        "Nama Kolom": "updated_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "user_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "supabase_user_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "name",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "email",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "role",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "telegram_chat_id",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "created_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "users",
+        "Nama Kolom": "updated_at",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "data_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "shelter_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "device_id",
+        "Tipe Data": "uuid",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "accel_x",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "accel_y",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "accel_z",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "gyro_x",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "gyro_y",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "gyro_z",
+        "Tipe Data": "double precision",
+        "Bisa Kosong (Nullable)": "NO"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "risk_level",
+        "Tipe Data": "character varying",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "metadata",
+        "Tipe Data": "jsonb",
+        "Bisa Kosong (Nullable)": "YES"
+    },
+    {
+        "Nama Tabel": "vibration_data",
+        "Nama Kolom": "timestamp",
+        "Tipe Data": "timestamp with time zone",
+        "Bisa Kosong (Nullable)": "YES"
+    }
+]

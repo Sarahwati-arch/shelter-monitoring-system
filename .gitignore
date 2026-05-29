@@ -23,6 +23,14 @@ env/
 Thumbs.db
 nul
 
+# Local planning
+master_plan.md
+task_plan.md
+form_proposal/
+
+# Datasets
+vibration_ai/
+
 # Supabase
 .supabase/
 

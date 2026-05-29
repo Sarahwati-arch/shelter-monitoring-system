@@ -1,16 +1,20 @@
-import { mockUser } from '@/data/mockData'
 import { User, Mail, Shield, MessageCircle, Key, Save } from 'lucide-react'
+import { useAuthStore } from '@/stores/authStore'
 
 export default function Profile() {
+  const profile = useAuthStore((state) => state.profile)
+
+  if (!profile) return null
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 animate-[fade-in_0.3s_ease-out]">
       {/* Profile Header */}
       <div className="glass-card p-6 text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-2xl font-bold text-white shadow-lg shadow-primary-500/25">
-          {mockUser.name.split(' ').map((n) => n[0]).join('')}
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-2xl font-bold text-white shadow-lg shadow-primary-500/25 uppercase">
+          {profile.name.split(' ').map((n) => n[0]).join('')}
         </div>
-        <h2 className="text-lg font-semibold text-surface-100">{mockUser.name}</h2>
-        <p className="text-sm capitalize text-surface-500">{mockUser.role}</p>
+        <h2 className="text-lg font-semibold text-surface-100">{profile.name}</h2>
+        <p className="text-sm capitalize text-surface-500">{profile.role}</p>
       </div>
 
       {/* Profile Form */}
@@ -21,25 +25,25 @@ export default function Profile() {
             <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-surface-400">
               <User className="h-3.5 w-3.5" /> Full Name
             </label>
-            <input type="text" defaultValue={mockUser.name} className="input" />
+            <input type="text" defaultValue={profile.name} className="input" />
           </div>
           <div>
             <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-surface-400">
               <Mail className="h-3.5 w-3.5" /> Email Address
             </label>
-            <input type="email" defaultValue={mockUser.email} className="input" disabled />
+            <input type="email" defaultValue={profile.email} className="input" disabled />
           </div>
           <div>
             <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-surface-400">
               <Shield className="h-3.5 w-3.5" /> Role
             </label>
-            <input type="text" defaultValue={mockUser.role} className="input capitalize" disabled />
+            <input type="text" defaultValue={profile.role} className="input capitalize" disabled />
           </div>
           <div>
             <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-surface-400">
               <MessageCircle className="h-3.5 w-3.5" /> Telegram Chat ID
             </label>
-            <input type="text" defaultValue={mockUser.telegram_chat_id || ''} placeholder="Enter Telegram Chat ID" className="input" />
+            <input type="text" defaultValue={profile.telegram_chat_id || ''} placeholder="Enter Telegram Chat ID" className="input" />
           </div>
           <button className="btn btn-primary w-full">
             <Save className="h-4 w-4" /> Save Changes

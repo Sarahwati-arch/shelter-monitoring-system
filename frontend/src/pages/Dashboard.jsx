@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import {
   Thermometer,
   Droplets,
@@ -8,38 +8,105 @@ import {
   Cpu,
   TrendingUp,
   Camera,
+  Loader2,
 } from 'lucide-react'
 import GaugeCard from '@/components/dashboard/GaugeCard'
 import StatusCard from '@/components/dashboard/StatusCard'
 import SensorChart from '@/components/dashboard/SensorChart'
 import CCTVFeed from '@/components/dashboard/CCTVFeed'
-import {
-  mockShelters,
-  mockSensorData,
-  mockAlerts,
-  mockDevices,
-  mockThresholds,
-  getLatestReading,
-  getAlertCounts,
-} from '@/data/mockData'
+import { dashboardService } from '@/services/dashboardService'
 
 export default function Dashboard() {
-  const [selectedShelter, setSelectedShelter] = useState(mockShelters[0].shelter_id)
+  const [shelters, setShelters] = useState([])
+  const [selectedShelter, setSelectedShelter] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [chartHours, setChartHours] = useState(6)
+  
+  // Dashboard Data States
+  const [latest, setLatest] = useState(null)
+  const [thresholds, setThresholds] = useState(null)
+  const [sensorData, setSensorData] = useState([])
+  const [alertStats, setAlertStats] = useState({ total: 0, open: 0 })
+  const [deviceStats, setDeviceStats] = useState({ total: 0, active: 0 })
 
-  const shelter = mockShelters.find((s) => s.shelter_id === selectedShelter)
-  const latest = getLatestReading(selectedShelter)
-  const thresholds = mockThresholds[selectedShelter]
-  const sensorData = mockSensorData[selectedShelter] || []
-  const alertCounts = getAlertCounts()
-  const activeDevices = mockDevices.filter(
-    (d) => d.shelter_id === selectedShelter && d.status === 'active'
-  ).length
-  const totalDevices = mockDevices.filter(
-    (d) => d.shelter_id === selectedShelter
-  ).length
+  // Initial Fetch: Shelters
+  useEffect(() => {
+    const fetchShelters = async () => {
+      try {
+        const data = await dashboardService.getShelters()
+        setShelters(data)
+        if (data.length > 0) {
+          setSelectedShelter(data[0].shelter_id)
+        } else {
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error fetching shelters:', error)
+        setLoading(false)
+      }
+    }
+    fetchShelters()
+  }, [])
+
+  // Fetch Data for Selected Shelter
+  const fetchDashboardData = useCallback(async () => {
+    if (!selectedShelter) return
+
+    try {
+      const [
+        latestReading,
+        currentThresholds,
+        history,
+        stats,
+        devices
+      ] = await Promise.all([
+        dashboardService.getLatestReading(selectedShelter),
+        dashboardService.getThresholds(selectedShelter),
+        dashboardService.getSensorHistory(selectedShelter, chartHours),
+        dashboardService.getAlertStats(selectedShelter),
+        dashboardService.getDeviceStats(selectedShelter)
+      ])
+
+      setLatest(latestReading)
+      setThresholds(currentThresholds)
+      setSensorData(history)
+      setAlertStats(stats)
+      setDeviceStats(devices)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedShelter, chartHours])
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [fetchDashboardData])
+
+  const shelter = useMemo(() => 
+    shelters.find((s) => s.shelter_id === selectedShelter),
+    [shelters, selectedShelter]
+  )
 
   const riskLevel = latest?.risk_level || 'low'
+
+  if (loading && shelters.length === 0) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+      </div>
+    )
+  }
+
+  if (shelters.length === 0) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center text-surface-500">
+        <Shield className="mb-4 h-12 w-12 opacity-20" />
+        <h3 className="text-lg font-medium">No Shelters Found</h3>
+        <p className="text-sm">Please add a shelter in the Admin panel to start monitoring.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-[fade-in_0.3s_ease-out]">
@@ -48,11 +115,11 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary-400" />
           <select
-            value={selectedShelter}
+            value={selectedShelter || ''}
             onChange={(e) => setSelectedShelter(e.target.value)}
             className="select max-w-xs"
           >
-            {mockShelters.map((s) => (
+            {shelters.map((s) => (
               <option key={s.shelter_id} value={s.shelter_id}>
                 {s.shelter_name}
               </option>
@@ -62,10 +129,11 @@ export default function Dashboard() {
         {shelter && (
           <p className="text-xs text-surface-500">{shelter.location}</p>
         )}
+        {loading && <Loader2 className="h-4 w-4 animate-spin text-primary-500" />}
       </div>
 
       {/* Status Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatusCard
           title="Risk Level"
           value={riskLevel.toUpperCase()}
@@ -75,24 +143,17 @@ export default function Dashboard() {
         />
         <StatusCard
           title="Open Alerts"
-          value={alertCounts.open}
-          subtitle={`${alertCounts.total} total alerts`}
+          value={alertStats.open}
+          subtitle={`${alertStats.total} total alerts`}
           icon={AlertTriangle}
-          color={alertCounts.open > 2 ? 'danger' : alertCounts.open > 0 ? 'warning' : 'success'}
+          color={alertStats.open > 2 ? 'danger' : alertStats.open > 0 ? 'warning' : 'success'}
         />
         <StatusCard
           title="Active Devices"
-          value={`${activeDevices}/${totalDevices}`}
+          value={`${deviceStats.active}/${deviceStats.total}`}
           subtitle="Connected devices"
           icon={Cpu}
-          color={activeDevices === totalDevices ? 'success' : 'warning'}
-        />
-        <StatusCard
-          title="Avg Temperature"
-          value={latest ? `${latest.temperature}°C` : '--'}
-          subtitle="Latest reading"
-          icon={TrendingUp}
-          color="info"
+          color={deviceStats.active === deviceStats.total && deviceStats.total > 0 ? 'success' : 'warning'}
         />
       </div>
 
@@ -104,8 +165,8 @@ export default function Dashboard() {
           unit="°C"
           min={15}
           max={50}
-          warningThreshold={thresholds?.temp_warning}
-          criticalThreshold={thresholds?.temp_critical}
+          warningThreshold={thresholds?.temp_warning || 35}
+          criticalThreshold={thresholds?.temp_critical || 40}
           icon={Thermometer}
         />
         <GaugeCard
@@ -114,7 +175,7 @@ export default function Dashboard() {
           unit="%"
           min={20}
           max={100}
-          warningThreshold={thresholds?.humidity_warning}
+          warningThreshold={thresholds?.humidity_warning || 80}
           icon={Droplets}
         />
         <GaugeCard
@@ -123,8 +184,8 @@ export default function Dashboard() {
           unit="g"
           min={0}
           max={4}
-          warningThreshold={thresholds?.vibration_limit * 0.75}
-          criticalThreshold={thresholds?.vibration_limit}
+          warningThreshold={(thresholds?.vibration_limit || 2.0) * 0.75}
+          criticalThreshold={thresholds?.vibration_limit || 2.0}
           icon={Activity}
         />
       </div>
@@ -157,11 +218,17 @@ export default function Dashboard() {
               Temperature Trend
             </h3>
             <div className="h-48">
-              <SensorChart
-                sensorData={sensorData}
-                type="temperature"
-                hours={chartHours}
-              />
+              {sensorData.length > 0 ? (
+                <SensorChart
+                  sensorData={sensorData}
+                  type="temperature"
+                  hours={chartHours}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-surface-500">
+                  No data available for this period
+                </div>
+              )}
             </div>
           </div>
 
@@ -172,11 +239,17 @@ export default function Dashboard() {
               Vibration Trend
             </h3>
             <div className="h-48">
-              <SensorChart
-                sensorData={sensorData}
-                type="vibration"
-                hours={chartHours}
-              />
+              {sensorData.length > 0 ? (
+                <SensorChart
+                  sensorData={sensorData}
+                  type="vibration"
+                  hours={chartHours}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-surface-500">
+                  No data available for this period
+                </div>
+              )}
             </div>
           </div>
         </div>

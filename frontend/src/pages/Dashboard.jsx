@@ -170,26 +170,27 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Time Range Selector */}
+      <div className="flex items-center justify-start gap-2">
+        {[3, 6, 12, 24].map((h) => (
+          <button
+            key={h}
+            onClick={() => setChartHours(h)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              chartHours === h
+                ? 'bg-primary-500/20 text-primary-400'
+                : 'text-surface-500 hover:bg-surface-800/50 hover:text-surface-300'
+            }`}
+          >
+            {h}h
+          </button>
+        ))}
+      </div>
+
       {/* Charts + Alert Feed */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* Charts */}
         <div className="xl:col-span-2 space-y-4">
-          {/* Time Range Selector */}
-          <div className="flex items-center gap-2">
-            {[3, 6, 12, 24].map((h) => (
-              <button
-                key={h}
-                onClick={() => setChartHours(h)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                  chartHours === h
-                    ? 'bg-primary-500/20 text-primary-400'
-                    : 'text-surface-500 hover:bg-surface-800/50 hover:text-surface-300'
-                }`}
-              >
-                {h}h
-              </button>
-            ))}
-          </div>
 
           {/* Temperature Chart */}
           <div className="glass-card p-5">

@@ -184,10 +184,17 @@ def calc_temp_risk_level(temperature: float, shelter_id: str) -> str:
     return "low"
 
 
-def insert_temperature(payload: dict, shelter_id: str, device_id: str) -> None:
+def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
     """Insert a temperature reading into Supabase."""
-    temperature = float(payload.get("temperature", 0.0))
-    humidity = float(payload.get("humidity", 0.0))
+    if isinstance(payload, dict):
+        temperature = float(payload.get("temperature", 0.0))
+        humidity = float(payload.get("humidity", 0.0))
+    else:
+        try:
+            temperature = float(payload)
+        except (ValueError, TypeError):
+            temperature = 0.0
+        humidity = 0.0
 
     risk_level = calc_temp_risk_level(temperature, shelter_id)
 
@@ -379,7 +386,8 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         # Public brokers often block root '#' subscriptions, use '+' instead
         client.subscribe("+/Accel")
         client.subscribe("+/Gyro")
-        print("Subscribed to: +/Accel, +/Gyro")
+        client.subscribe("+/Temp")
+        print("Subscribed to: +/Accel, +/Gyro, +/Temp")
     else:
         print(f"MQTT connection failed with code: {reason_code}")
 
@@ -392,8 +400,8 @@ def on_message(client, userdata, msg):
     if len(parts) != 2:
         return  # Ignore invalid topics
 
-    device_token = parts[0]
-    sensor_type = parts[1]
+    device_token = parts[0].strip()
+    sensor_type = parts[1].strip()
 
     # Resolve token -> device_id + shelter_id
     device = resolve_device(device_token)

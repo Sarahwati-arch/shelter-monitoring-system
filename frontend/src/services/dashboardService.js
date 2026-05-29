@@ -77,6 +77,8 @@ export const dashboardService = {
       humidity: tempData?.humidity || 0,
       vibration: vibrationMagnitude,
       risk_level: tempData?.risk_level || vibData?.risk_level || 'low',
+      temp_risk_level: tempData?.risk_level || 'low',
+      vib_risk_level: vibData?.risk_level || 'low',
       timestamp: tempData?.timestamp || vibData?.timestamp || null,
       vibration_metadata: vibData?.metadata || {}
     }

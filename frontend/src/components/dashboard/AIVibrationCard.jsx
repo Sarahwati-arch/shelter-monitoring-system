@@ -139,7 +139,7 @@ export default function AIVibrationCard({ latestMetadata, sensorData }) {
               Class Distribution (Selected TimeRange)
             </p>
             {chartData ? (
-              <div className="flex-1 relative">
+              <div className="relative h-48 w-full">
                 <Doughnut data={chartData} options={chartOptions} />
               </div>
             ) : (

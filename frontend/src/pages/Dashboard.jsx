@@ -92,7 +92,8 @@ export default function Dashboard() {
     [shelters, selectedShelter]
   )
 
-  const riskLevel = latest?.risk_level || 'low'
+  const tempRiskLevel = latest?.temp_risk_level || 'low'
+  const vibRiskLevel = latest?.vib_risk_level || 'low'
 
   if (loading && shelters.length === 0) {
     return (
@@ -134,24 +135,6 @@ export default function Dashboard() {
           <p className="text-xs text-surface-500">{shelter.location}</p>
         )}
         {loading && <Loader2 className="h-4 w-4 animate-spin text-primary-500" />}
-      </div>
-
-      {/* Status Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatusCard
-          title="Risk Level"
-          value={riskLevel.toUpperCase()}
-          subtitle="Current assessment"
-          icon={AlertTriangle}
-          color={riskLevel === 'high' ? 'danger' : riskLevel === 'medium' ? 'warning' : 'success'}
-        />
-        <StatusCard
-          title="Open Alerts"
-          value={alertStats.open}
-          subtitle={`${alertStats.total} total alerts`}
-          icon={AlertTriangle}
-          color={alertStats.open > 2 ? 'danger' : alertStats.open > 0 ? 'warning' : 'success'}
-        />
       </div>
 
       {/* Gauge Cards */}
@@ -262,6 +245,22 @@ export default function Dashboard() {
 
         {/* Right Column: AI Diagnostics */}
         <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <StatusCard
+              title="Temp. Risk Level"
+              value={tempRiskLevel.toUpperCase()}
+              subtitle="Temperature & Humidity"
+              icon={Thermometer}
+              color={tempRiskLevel === 'high' ? 'danger' : tempRiskLevel === 'medium' ? 'warning' : 'success'}
+            />
+            <StatusCard
+              title="Vib. Risk Level"
+              value={vibRiskLevel.toUpperCase()}
+              subtitle="Structural Assessment"
+              icon={Activity}
+              color={vibRiskLevel === 'high' ? 'danger' : vibRiskLevel === 'medium' ? 'warning' : 'success'}
+            />
+          </div>
 
           {/* AI Diagnostics Card */}
           <AIVibrationCard 

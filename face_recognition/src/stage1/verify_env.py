@@ -80,6 +80,7 @@ def main():
     print("\n── MTCNN smoke test ──")
 
     def mtcnn_smoke():
+        # pyrefly: ignore [missing-import]
         from mtcnn import MTCNN
         import numpy as np
         det = MTCNN()

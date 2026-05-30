@@ -164,6 +164,7 @@ def _get_embedding_from_array(face_rgb: np.ndarray) -> np.ndarray | None:
     Writes to a temp file because DeepFace.represent() needs a path.
     """
     try:
+                # pyrefly: ignore [missing-import]
         from deepface import DeepFace
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
             tmp_path = tmp.name
@@ -531,7 +532,7 @@ class FaceRecognizer:
         thr = self.adaptive_thresholds.get(best_name, BASE_SIMILARITY_THRESHOLD)
         passes_threshold = best_score >= thr
 
-        # ── Margin check — key fix for Sarah/Nanda confusion ──
+        # ── Margin check  ──
         margin = best_score - second_score
         passes_margin = margin >= MARGIN_MIN
 

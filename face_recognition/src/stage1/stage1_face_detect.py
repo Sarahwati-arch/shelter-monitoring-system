@@ -19,6 +19,7 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 from PIL import Image
+# pyrefly: ignore [missing-import]
 from mtcnn import MTCNN
 
 # ─────────────────────────────────────────────

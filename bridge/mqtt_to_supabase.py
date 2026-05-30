@@ -8,6 +8,7 @@ import math
 import os
 import sys
 import time
+import requests
 from dotenv import load_dotenv
 
 import numpy as np
@@ -29,9 +30,11 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 # Vibration threshold for risk level (g-force magnitude)
-VIBRATION_WARNING = 2.0  # matches thresholds table
+VIBRATION_WARNING = 1.0  # matches thresholds table
 
 # ---------------------------------------------------------------------------
 # AI Model Initialization
@@ -136,6 +139,19 @@ PAIR_TIMEOUT = 3.0
 # ---------------------------------------------------------------------------
 
 
+def send_telegram(message: str) -> None:
+    """Kirim alert ke Telegram bot suhu & vibrasi."""
+    if not BOT_TOKEN or not CHAT_ID:
+        print("[TG] BOT_TOKEN / CHAT_ID belum diset di .env, skip.")
+        return
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": CHAT_ID, "text": message}, timeout=5)
+        print("[TG] Alert sent.")
+    except Exception as e:
+        print(f"[TG ERROR] {e}")
+
+
 def calc_risk_level(accel_x: float, accel_y: float, accel_z: float) -> str:
     """Calculate risk level based on acceleration magnitude."""
     magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
@@ -226,19 +242,24 @@ def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
         severity = "critical" if risk_level == "high" else "warning"
         limit = thresholds.get("temp_critical" if risk_level == "high" else "temp_warning", 40.0)
 
+        msg = (
+            f"Temperature {'critical' if risk_level == 'high' else 'warning'}: "
+            f"{temperature:.1f}°C (limit: {limit:.1f}°C)"
+        )
+
         alert = {
             "shelter_id": shelter_id,
             "temp_data_id": temp_data_id,
             "alert_type": "temp",
             "status": "open",
             "severity": severity,
-            "message": (
-                f"Temperature {'critical' if risk_level == 'high' else 'warning'}: "
-                f"{temperature:.1f}°C (limit: {limit:.1f}°C)"
-            ),
+            "message": msg,
         }
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: temp {severity}!")
+        
+        if risk_level == "high":
+            send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 def _get_buffer(device_id: str) -> dict:
@@ -360,19 +381,23 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     if final_risk in ["high", "critical"]:
         magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
         
+        msg = (
+            f"Vibration critical: magnitude {magnitude:.2f} g "
+            f"(limit: {VIBRATION_WARNING} g)"
+        )
+
         alert = {
             "shelter_id": shelter_id,
             "vibration_data_id": vibration_data_id,
             "alert_type": "vibration",
             "status": "open",
             "severity": "critical",
-            "message": (
-                f"Vibration critical: magnitude {magnitude:.2f} g "
-                f"(limit: {VIBRATION_WARNING} g)"
-            ),
+            "message": msg,
         }
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: vibration critical!")
+        
+        send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 # ---------------------------------------------------------------------------

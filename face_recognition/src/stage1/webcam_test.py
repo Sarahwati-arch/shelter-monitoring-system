@@ -52,7 +52,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 # Configuration
 # ─────────────────────────────────────────────
 
-DEFAULT_THRESHOLD = 0.90
+DEFAULT_THRESHOLD = 0.80
 CAMERA_ID         = "WEBCAM_LAPTOP"
 
 # Overlay colours (BGR)

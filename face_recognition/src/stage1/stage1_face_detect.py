@@ -38,7 +38,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 # ── Confidence threshold (tune on 20-30 sample images) ──
 # Documented choices: 0.7 / 0.8 / 0.9
 # Final chosen value stored in logs/confidence_threshold_log.md
-CONFIDENCE_THRESHOLD = 0.90   # <-- change when tuning
+CONFIDENCE_THRESHOLD = 0.80   # <-- change when tuning
 
 # ── Face crop padding (pixels) ──
 PADDING = 25   # 20-30 px

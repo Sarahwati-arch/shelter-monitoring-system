@@ -33,9 +33,11 @@ import argparse
 import numpy as np
 from pathlib import Path
 from datetime import datetime
-# pyrefly: ignore [missing-import]
 from mtcnn import MTCNN
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from stage1.stage1_face_detect import align_face, crop_face
 # ─────────────────────────────────────────────
 # Paths
 # ─────────────────────────────────────────────
@@ -166,7 +168,8 @@ def process_frame(frame_bgr: np.ndarray,
         # ── Recognition ──
         identity, rec_conf = "—", 0.0
         if recognizer is not None:
-            face_crop = image_rgb[y1:y2, x1:x2]
+            aligned_rgb = align_face(image_rgb, kps)
+            face_crop   = crop_face(aligned_rgb, det["box"])
             if face_crop.size > 0:
                 identity, rec_conf = _recognize_face(recognizer, face_crop)
                 if identity == "unknown":

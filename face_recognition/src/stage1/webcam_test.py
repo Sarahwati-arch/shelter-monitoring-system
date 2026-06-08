@@ -276,6 +276,8 @@ def run(cam_index: int = 0,
             if not ret:
                 print("ERROR: Lost camera feed.")
                 break
+            
+            frame_bgr = cv2.flip(frame_bgr, 1)   # 1 = horizontal flip
 
             frame_count += 1
             elapsed = (datetime.now() - t_start).total_seconds()

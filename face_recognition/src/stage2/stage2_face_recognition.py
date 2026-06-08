@@ -166,9 +166,9 @@ def _get_embedding_from_array(face_rgb: np.ndarray) -> np.ndarray | None:
     try:
                 # pyrefly: ignore [missing-import]
         from deepface import DeepFace
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp_path = tmp.name
-            Image.fromarray(face_rgb).save(tmp_path)
+            Image.fromarray(face_rgb).save(tmp_path, format="PNG")
         try:
             result = DeepFace.represent(
                 img_path          = tmp_path,

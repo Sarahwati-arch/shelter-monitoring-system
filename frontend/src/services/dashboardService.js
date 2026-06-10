@@ -116,6 +116,9 @@ export const dashboardService = {
       humidity: tempData?.humidity || 0,
       vibration: vibrationMagnitude,
       risk_level: tempData?.risk_level || vibData?.risk_level || 'low',
+      temp_risk_level: tempData?.risk_level || 'low',
+      vib_risk_level: vibData?.risk_level || 'low',
+      vibration_metadata: vibData?.metadata || {},
       timestamp: tempData?.timestamp || vibData?.timestamp || null
     }
   },
@@ -168,7 +171,7 @@ export const dashboardService = {
         .order('timestamp', { ascending: true }),
       supabase
         .from('vibration_data')
-        .select('timestamp, accel_x, accel_y, accel_z')
+        .select('timestamp, accel_x, accel_y, accel_z, metadata')
         .eq('shelter_id', shelterId)
         .gte('timestamp', timeAgo.toISOString())
         .order('timestamp', { ascending: true })
@@ -191,7 +194,8 @@ export const dashboardService = {
         timestamp: t.timestamp,
         temperature: t.temperature,
         humidity: t.humidity,
-        vibration: vibrationMagnitude
+        vibration: vibrationMagnitude,
+        metadata: v ? (v.metadata || {}) : {}
       }
     })
 

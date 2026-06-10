@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+venv/
+bridge/venv/
 __pycache__/
 *.pyc
 

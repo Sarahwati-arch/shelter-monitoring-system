@@ -201,8 +201,8 @@ export default function Dashboard() {
                 key={h}
                 onClick={() => setChartHours(h)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${chartHours === h
-                    ? 'bg-primary-500/20 text-primary-400'
-                    : 'text-surface-500 hover:bg-surface-800/50 hover:text-surface-300'
+                  ? 'bg-primary-500/20 text-primary-400'
+                  : 'text-surface-500 hover:bg-surface-800/50 hover:text-surface-300'
                   }`}
               >
                 {h}h
@@ -291,6 +291,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
-    </div >
+
   )
 }

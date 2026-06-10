@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
   user: null,
   profile: null,
   loading: true,
@@ -61,6 +61,20 @@ export const useAuthStore = create((set) => ({
       }
       set({ loading: false })
     })
+  },
+
+  updateProfile: async (updates) => {
+    const { profile } = get()
+    if (!profile) throw new Error('No profile loaded')
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('user_id', profile.user_id)
+      .select()
+      .single()
+    if (error) throw error
+    set({ profile: data })
+    return data
   },
 
   signOut: async () => {

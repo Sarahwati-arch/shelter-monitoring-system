@@ -24,6 +24,8 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID_FALLBACK = os.getenv("CHAT_ID")  # fallback jika DB tidak tersedia
 
 # Vibration threshold for risk level (g-force magnitude)
 VIBRATION_WARNING = 2.0  # matches thresholds table
@@ -86,6 +88,53 @@ PAIR_TIMEOUT = 3.0
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+# Cache untuk Chat ID dari database
+_user_chat_ids: list = []
+_user_chat_ids_ts: float = 0
+_user_chat_ids_ttl = 300  # 5 menit
+
+
+def get_telegram_chat_ids() -> list:
+    """Ambil semua telegram_chat_id dari tabel users, dengan caching 5 menit."""
+    global _user_chat_ids, _user_chat_ids_ts
+    now = time.time()
+    if _user_chat_ids and (now - _user_chat_ids_ts) < _user_chat_ids_ttl:
+        return _user_chat_ids
+    try:
+        resp = supabase.table("users").select("telegram_chat_id").not_.is_("telegram_chat_id", "null").execute()
+        ids = [row["telegram_chat_id"] for row in (resp.data or []) if row.get("telegram_chat_id")]
+        if ids:
+            _user_chat_ids = ids
+            _user_chat_ids_ts = now
+            print(f"[TG] Loaded {len(ids)} Chat ID(s) from database.")
+            return ids
+    except Exception as e:
+        print(f"[TG] Gagal fetch Chat ID dari DB: {e}")
+    # Fallback ke .env
+    if CHAT_ID_FALLBACK:
+        print("[TG] Fallback ke CHAT_ID dari .env.")
+        return [CHAT_ID_FALLBACK]
+    return []
+
+
+def send_telegram(message: str) -> None:
+    """Kirim alert ke semua Telegram Chat ID yang terdaftar."""
+    if not BOT_TOKEN:
+        print("[TG] BOT_TOKEN belum diset di .env, skip.")
+        return
+    chat_ids = get_telegram_chat_ids()
+    if not chat_ids:
+        print("[TG] Tidak ada Chat ID yang tersedia, skip.")
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    for chat_id in chat_ids:
+        try:
+            requests.post(url, data={"chat_id": chat_id, "text": message}, timeout=5)
+            print(f"[TG] Alert sent to {chat_id}.")
+        except Exception as e:
+            print(f"[TG ERROR] chat_id={chat_id}: {e}")
 
 
 def calc_risk_level(accel_x: float, accel_y: float, accel_z: float) -> str:

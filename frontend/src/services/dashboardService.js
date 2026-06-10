@@ -1,5 +1,29 @@
 import { supabase } from '@/lib/supabase'
 
+const TIMEOUT_MS = 10000 // 10 seconds
+
+const withTimeout = (promise) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('SUPABASE_TIMEOUT')), TIMEOUT_MS)
+    )
+  ]).catch(error => {
+    if (error.message === 'SUPABASE_TIMEOUT') {
+      const lastReload = sessionStorage.getItem('last_auto_reload')
+      const now = Date.now()
+      // Only auto-reload once per minute to avoid infinite reload loops
+      if (!lastReload || now - parseInt(lastReload, 10) > 60000) {
+        sessionStorage.setItem('last_auto_reload', now.toString())
+        window.location.reload()
+      } else {
+        throw new Error('Network timeout. Please check your connection.')
+      }
+    }
+    throw error
+  })
+}
+
 export const dashboardService = {
   /**
    * Fetch all shelters
@@ -26,6 +50,34 @@ export const dashboardService = {
     
     if (error) throw error
     return data
+  },
+
+  /**
+   * Update a shelter
+   */
+  async updateShelter(shelterId, updates) {
+    const { data, error } = await supabase
+      .from('shelters')
+      .update(updates)
+      .eq('shelter_id', shelterId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  /**
+   * Delete a shelter
+   */
+  async deleteShelter(shelterId) {
+    const { error } = await supabase
+      .from('shelters')
+      .delete()
+      .eq('shelter_id', shelterId)
+
+    if (error) throw error
+    return true
   },
 
   /**
@@ -83,6 +135,21 @@ export const dashboardService = {
       return null
     }
     return data || null
+  },
+
+  /**
+   * Get all thresholds
+   */
+  async getAllThresholds() {
+    const { data, error } = await supabase
+      .from('thresholds')
+      .select('*')
+
+    if (error) {
+      console.error('Error fetching all thresholds:', error)
+      return []
+    }
+    return data || []
   },
 
   /**
@@ -281,6 +348,17 @@ export const dashboardService = {
   },
 
   /**
+   * Create a new user (calls Edge Function to use service role key securely)
+   */
+  async createUser({ name, email, password, role }) {
+    const { data, error } = await supabase.functions.invoke('create-user', {
+      body: { name, email, password, role }
+    })
+    if (error) throw error
+    return data
+  },
+
+  /**
    * Get all devices
    */
   async getDevices(shelterId = null) {
@@ -391,3 +469,13 @@ export const dashboardService = {
     return data || []
   }
 }
+
+// Wrap all methods in dashboardService with the timeout
+Object.keys(dashboardService).forEach(key => {
+  if (typeof dashboardService[key] === 'function') {
+    const originalMethod = dashboardService[key]
+    dashboardService[key] = function (...args) {
+      return withTimeout(originalMethod.apply(this, args))
+    }
+  }
+})

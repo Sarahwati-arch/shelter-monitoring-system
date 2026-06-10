@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [loading, setLoading] = useState(true)
   const [chartHours, setChartHours] = useState(6)
-  
+
   // Dashboard Data States
   const [latest, setLatest] = useState(null)
   const [thresholds, setThresholds] = useState(null)
@@ -83,7 +83,7 @@ export default function Dashboard() {
     fetchDashboardData()
   }, [fetchDashboardData])
 
-  const shelter = useMemo(() => 
+  const shelter = useMemo(() =>
     shelters.find((s) => s.shelter_id === selectedShelter),
     [shelters, selectedShelter]
   )
@@ -200,11 +200,10 @@ export default function Dashboard() {
               <button
                 key={h}
                 onClick={() => setChartHours(h)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                  chartHours === h
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${chartHours === h
                     ? 'bg-primary-500/20 text-primary-400'
                     : 'text-surface-500 hover:bg-surface-800/50 hover:text-surface-300'
-                }`}
+                  }`}
               >
                 {h}h
               </button>
@@ -263,6 +262,35 @@ export default function Dashboard() {
           <CCTVFeed shelterId={selectedShelter} limit={4} />
         </div>
       </div>
+
+      {/* Right Column: AI Diagnostics */}
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4">
+          <StatusCard
+            title="Temp. Risk Level"
+            value={tempRiskLevel.toUpperCase()}
+            subtitle="Temperature & Humidity"
+            icon={Thermometer}
+            color={tempRiskLevel === 'high' ? 'danger' : tempRiskLevel === 'medium' ? 'warning' : 'success'}
+          />
+          <StatusCard
+            title="Vib. Risk Level"
+            value={vibRiskLevel.toUpperCase()}
+            subtitle="Structural Assessment"
+            icon={Activity}
+            color={vibRiskLevel === 'high' ? 'danger' : vibRiskLevel === 'medium' ? 'warning' : 'success'}
+          />
+        </div>
+
+        {/* AI Diagnostics Card — flex-1 agar stretch sejajar bottom CCTV */}
+        <div className="flex-1">
+          <AIVibrationCard
+            latestMetadata={latest?.vibration_metadata}
+            sensorData={sensorData}
+          />
+        </div>
+      </div>
     </div>
+    </div >
   )
 }

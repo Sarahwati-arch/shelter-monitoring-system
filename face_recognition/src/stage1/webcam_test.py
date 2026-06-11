@@ -133,7 +133,8 @@ def _recognize_face(recognizer, face_rgb: np.ndarray) -> tuple[str, float]:
 
 def process_frame(frame_bgr: np.ndarray,
                   threshold: float,
-                  recognizer=None) -> tuple[np.ndarray, dict]:
+                  recognizer=None,
+                  cached_faces=None) -> tuple[np.ndarray, dict]:
     """
     Run MTCNN + optional recognition on one BGR frame.
 
@@ -172,14 +173,26 @@ def process_frame(frame_bgr: np.ndarray,
             face_crop   = crop_face(aligned_rgb, det["box"])
             if face_crop.size > 0:
                 identity, rec_conf = _recognize_face(recognizer, face_crop)
-                if identity == "unknown":
-                    alert_flag = True
-                    alert_type = "unknown_person"
-                    box_color  = COLOR_ALERT_BOX
-                    label      = f"UNKNOWN ({rec_conf:.2f})"
-                else:
-                    box_color = COLOR_NAME_BOX
-                    label     = f"{identity} ({rec_conf:.2f})"
+        elif cached_faces:
+            cx, cy = x + w/2, y + h/2
+            best_dist = float('inf')
+            for cf in cached_faces:
+                bx, by, bw, bh = cf["box"]
+                bcx, bcy = bx + bw/2, by + bh/2
+                dist = (cx - bcx)**2 + (cy - bcy)**2
+                if dist < best_dist and dist < 10000:
+                    best_dist = dist
+                    identity = cf.get("identity", "—")
+                    rec_conf = cf.get("rec_conf", 0.0)
+
+        if identity == "unknown":
+            alert_flag = True
+            alert_type = "unknown_person"
+            box_color  = COLOR_ALERT_BOX
+            label      = f"UNKNOWN ({rec_conf:.2f})"
+        elif identity != "—":
+            box_color = COLOR_NAME_BOX
+            label     = f"{identity} ({rec_conf:.2f})"
 
         cv2.rectangle(annotated, (x1, y1), (x2, y2),
                       color=box_color, thickness=2)
@@ -273,6 +286,9 @@ def run(cam_index: int = 0,
 
     t_start = datetime.now()
 
+    # Add before the loop in run():
+    RECOGNIZE_EVERY_N = 5   # run recognition once every 5 frames
+
     while True:
         if not paused:
             ret, frame_bgr = cap.read()
@@ -282,11 +298,17 @@ def run(cam_index: int = 0,
             
             frame_bgr = cv2.flip(frame_bgr, 1)   # 1 = horizontal flip
 
+            # In the loop, replace the process_frame call:
             frame_count += 1
             elapsed = (datetime.now() - t_start).total_seconds()
             fps     = frame_count / elapsed if elapsed > 0 else 0.0
 
-            annotated, result = process_frame(frame_bgr, threshold, recognizer)
+            run_recognition = (frame_count % RECOGNIZE_EVERY_N == 0)
+            annotated, result = process_frame(
+                frame_bgr, threshold,
+                recognizer if run_recognition else None,
+                last_result.get("faces") if not run_recognition else None
+            )
             last_result = result
 
             if result["alert_flag"]:

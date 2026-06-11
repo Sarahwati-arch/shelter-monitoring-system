@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+venv/
 __pycache__/
 *.pyc
 venv/
@@ -28,8 +29,14 @@ master_plan.md
 task_plan.md
 form_proposal/
 
-# Datasets
-vibration_ai/
+# Datasets & ML Models
+*.npy
+vibration_ai/class_*/
+vibration_ai/*.json
+vibration_ai/*.wav
+vibration_ai/models/*.pkl
+vibration_ai/models/*.txt
+vibration_ai/models/!*.keep
 
 # Supabase
 .supabase/

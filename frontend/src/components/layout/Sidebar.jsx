@@ -21,14 +21,15 @@ const navigation = [
   { name: 'Profile', href: '/profile', icon: User },
 ]
 
-export default function Sidebar({ collapsed, setCollapsed }) {
+export default function Sidebar({ collapsed, setCollapsed, mobileMenuOpen }) {
   const location = useLocation()
 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 flex h-screen flex-col bg-surface-950/95 shadow-xl shadow-surface-900/50 backdrop-blur-3xl transition-all duration-300',
-        collapsed ? 'w-[72px]' : 'w-[260px]'
+        'fixed left-0 top-0 z-40 flex h-screen flex-col bg-surface-950/95 shadow-xl shadow-surface-900/50 backdrop-blur-3xl transition-all duration-300 md:translate-x-0',
+        collapsed ? 'w-[72px]' : 'w-[260px]',
+        mobileMenuOpen ? 'translate-x-0 !w-[260px]' : '-translate-x-full'
       )}
     >
       {/* Logo */}
@@ -89,7 +90,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       </nav>
 
       {/* Collapse Toggle */}
-      <div className="p-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.2)]">
+      <div className="hidden p-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.2)] md:block">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex w-full items-center justify-center rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-800/60 hover:text-surface-300"

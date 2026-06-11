@@ -8,7 +8,13 @@ import math
 import os
 import sys
 import time
+import requests
 from dotenv import load_dotenv
+
+import numpy as np
+import joblib
+import librosa
+from scipy.stats import skew, kurtosis, median_abs_deviation, iqr
 
 from paho.mqtt.client import Client as MQTTClient, CallbackAPIVersion
 from supabase import create_client
@@ -24,9 +30,54 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 # Vibration threshold for risk level (g-force magnitude)
-VIBRATION_WARNING = 2.0  # matches thresholds table
+VIBRATION_WARNING = 1.0  # matches thresholds table
+
+# ---------------------------------------------------------------------------
+# AI Model Initialization
+# ---------------------------------------------------------------------------
+
+AI_MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "vibration_ai", "models")
+MODEL_PATH = os.path.join(AI_MODELS_DIR, "vibration_classifier.pkl")
+SCALER_PATH = os.path.join(AI_MODELS_DIR, "scaler.pkl")
+
+ai_model = None
+ai_scaler = None
+
+if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
+    print("Loading AI Model and Scaler...")
+    ai_model = joblib.load(MODEL_PATH)
+    ai_scaler = joblib.load(SCALER_PATH)
+    print("AI Model loaded successfully.")
+else:
+    print("WARN: AI Model or Scaler not found. AI features disabled.")
+
+CLASS_NAMES = {0: "Normal/AC", 1: "Footsteps", 2: "Sabotage/Maintenance", 3: "Vehicle", 4: "Earthquake"}
+CLASS_RISK_MAP = {0: "low", 1: "low", 2: "high", 3: "medium", 4: "critical"}
+_ai_buffers: dict = {}
+_last_ai_metadata: dict = {}
+
+def extract_features_from_signal(signal):
+    if len(signal) == 0: return np.zeros(14)
+    mean = np.mean(signal)
+    std = np.std(signal)
+    skewness = skew(signal)
+    kurt = kurtosis(signal)
+    min_val = np.min(signal)
+    max_val = np.max(signal)
+    range_val = max_val - min_val
+    median = np.median(signal)
+    mad = median_abs_deviation(signal)
+    iqr_val = iqr(signal)
+    rms = np.sqrt(np.mean(np.array(signal)**2))
+    energy = np.sum(np.array(signal)**2)
+    zcr = np.mean(librosa.feature.zero_crossing_rate(np.array(signal)))
+    peak = np.max(np.abs(signal))
+    crest_factor = peak / rms if rms > 0 else 0.0
+    return [zcr, mean, mad, skewness, std, kurt, crest_factor, min_val, max_val, range_val, median, iqr_val, rms, energy]
 
 # ---------------------------------------------------------------------------
 # Supabase init
@@ -88,6 +139,19 @@ PAIR_TIMEOUT = 3.0
 # ---------------------------------------------------------------------------
 
 
+def send_telegram(message: str) -> None:
+    """Kirim alert ke Telegram bot suhu & vibrasi."""
+    if not BOT_TOKEN or not CHAT_ID:
+        print("[TG] BOT_TOKEN / CHAT_ID belum diset di .env, skip.")
+        return
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": CHAT_ID, "text": message}, timeout=5)
+        print("[TG] Alert sent.")
+    except Exception as e:
+        print(f"[TG ERROR] {e}")
+
+
 def calc_risk_level(accel_x: float, accel_y: float, accel_z: float) -> str:
     """Calculate risk level based on acceleration magnitude."""
     magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
@@ -136,10 +200,17 @@ def calc_temp_risk_level(temperature: float, shelter_id: str) -> str:
     return "low"
 
 
-def insert_temperature(payload: dict, shelter_id: str, device_id: str) -> None:
+def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
     """Insert a temperature reading into Supabase."""
-    temperature = float(payload.get("temperature", 0.0))
-    humidity = float(payload.get("humidity", 0.0))
+    if isinstance(payload, dict):
+        temperature = float(payload.get("temperature", 0.0))
+        humidity = float(payload.get("humidity", 0.0))
+    else:
+        try:
+            temperature = float(payload)
+        except (ValueError, TypeError):
+            temperature = 0.0
+        humidity = 0.0
 
     risk_level = calc_temp_risk_level(temperature, shelter_id)
 
@@ -171,19 +242,24 @@ def insert_temperature(payload: dict, shelter_id: str, device_id: str) -> None:
         severity = "critical" if risk_level == "high" else "warning"
         limit = thresholds.get("temp_critical" if risk_level == "high" else "temp_warning", 40.0)
 
+        msg = (
+            f"Temperature {'critical' if risk_level == 'high' else 'warning'}: "
+            f"{temperature:.1f}°C (limit: {limit:.1f}°C)"
+        )
+
         alert = {
             "shelter_id": shelter_id,
             "temp_data_id": temp_data_id,
             "alert_type": "temp",
             "status": "open",
             "severity": severity,
-            "message": (
-                f"Temperature {'critical' if risk_level == 'high' else 'warning'}: "
-                f"{temperature:.1f}°C (limit: {limit:.1f}°C)"
-            ),
+            "message": msg,
         }
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: temp {severity}!")
+        
+        if risk_level == "high":
+            send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 def _get_buffer(device_id: str) -> dict:
@@ -232,7 +308,46 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     gyro_y = data.get("gyro_y", 0.0)
     gyro_z = data.get("gyro_z", 0.0)
 
-    risk_level = calc_risk_level(accel_x, accel_y, accel_z)
+    conventional_risk = calc_risk_level(accel_x, accel_y, accel_z)
+    final_risk = conventional_risk
+    
+    # Use the last known AI metadata for this device as the base
+    metadata = _last_ai_metadata.get(device_id, {}).copy()
+    
+    # Calculate magnitude and buffer
+    magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+    if device_id not in _ai_buffers:
+        _ai_buffers[device_id] = []
+    _ai_buffers[device_id].append(magnitude)
+    
+    # Trigger AI if buffer is full (N=50)
+    if len(_ai_buffers[device_id]) >= 50:
+        if ai_model and ai_scaler:
+            try:
+                signal = np.array(_ai_buffers[device_id])
+                features = extract_features_from_signal(signal)
+                features_scaled = ai_scaler.transform([features])
+                probs = ai_model.predict_proba(features_scaled)[0]
+                pred_class = int(ai_model.predict(features_scaled)[0])
+                max_prob = float(np.max(probs))
+                
+                if max_prob < 0.60:
+                    metadata = {"ai_label": "Unknown", "ai_confidence": max_prob, "ai_fallback": True, "ai_window_size": 50}
+                    final_risk = conventional_risk
+                else:
+                    metadata = {"ai_label": CLASS_NAMES.get(pred_class, "Unknown"), "ai_confidence": max_prob, "ai_fallback": False, "ai_window_size": 50}
+                    final_risk = CLASS_RISK_MAP.get(pred_class, conventional_risk)
+            except Exception as e:
+                print(f"  -> AI PREDICTION ERROR: {e}")
+                metadata = {"ai_fallback": True, "error": str(e)}
+        else:
+            metadata = {"ai_fallback": True, "reason": "Model not loaded"}
+            
+        # Update cache
+        _last_ai_metadata[device_id] = metadata
+        
+        # Reset buffer
+        _ai_buffers[device_id] = []
 
     row = {
         "shelter_id": shelter_id,
@@ -243,14 +358,14 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
         "gyro_x": gyro_x,
         "gyro_y": gyro_y,
         "gyro_z": gyro_z,
-        "risk_level": risk_level,
-        "metadata": {},
+        "risk_level": final_risk,
+        "metadata": metadata,
     }
 
     # Insert vibration data and get the new ID
     response = supabase.table("vibration_data").insert(row).execute()
     vibration_data_id = response.data[0]["data_id"]
-    print(f"  -> Inserted | shelter={shelter_id} | device={device_id} | risk={risk_level} | "
+    print(f"  -> Inserted | shelter={shelter_id} | device={device_id} | risk={final_risk} | "
           f"accel=({accel_x:.3f}, {accel_y:.3f}, {accel_z:.3f}) | "
           f"gyro=({gyro_x:.3f}, {gyro_y:.3f}, {gyro_z:.3f})")
 
@@ -262,23 +377,27 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     except Exception:
         pass
 
-    # Generate alert if high risk
-    if risk_level == "high":
+    # Generate alert if high or critical risk
+    if final_risk in ["high", "critical"]:
         magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
         
+        msg = (
+            f"Vibration critical: magnitude {magnitude:.2f} g "
+            f"(limit: {VIBRATION_WARNING} g)"
+        )
+
         alert = {
             "shelter_id": shelter_id,
             "vibration_data_id": vibration_data_id,
             "alert_type": "vibration",
             "status": "open",
             "severity": "critical",
-            "message": (
-                f"Vibration critical: magnitude {magnitude:.2f} g "
-                f"(limit: {VIBRATION_WARNING} g)"
-            ),
+            "message": msg,
         }
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: vibration critical!")
+        
+        send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 # ---------------------------------------------------------------------------
@@ -289,22 +408,25 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         print(f"Connected to MQTT broker {MQTT_BROKER}:{MQTT_PORT}")
-        # Subscribe to all topics
-        client.subscribe("#")
-        print("Subscribed to: #")
+        # Public brokers often block root '#' subscriptions, use '+' instead
+        client.subscribe("+/Accel")
+        client.subscribe("+/Gyro")
+        client.subscribe("+/Temp")
+        print("Subscribed to: +/Accel, +/Gyro, +/Temp")
     else:
         print(f"MQTT connection failed with code: {reason_code}")
 
 
 def on_message(client, userdata, msg):
+    print(f"DEBUG: received message on {msg.topic}")
     topic = msg.topic
     # Expecting: <device_token>/<sensor_type> (e.g. tok_esp32_temp_alpha_001/Temp)
     parts = topic.split('/')
     if len(parts) != 2:
         return  # Ignore invalid topics
 
-    device_token = parts[0]
-    sensor_type = parts[1]
+    device_token = parts[0].strip()
+    sensor_type = parts[1].strip()
 
     # Resolve token -> device_id + shelter_id
     device = resolve_device(device_token)

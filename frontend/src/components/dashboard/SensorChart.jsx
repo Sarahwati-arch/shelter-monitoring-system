@@ -82,6 +82,7 @@ export default function SensorChart({ sensorData, type = 'temperature', hours = 
     () => ({
       responsive: true,
       maintainAspectRatio: false,
+      animation: false,
       interaction: {
         mode: 'index',
         intersect: false,

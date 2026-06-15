@@ -335,9 +335,42 @@ function ThresholdsTab() {
   const [shelters, setShelters] = useState([])
   const [thresholds, setThresholds] = useState({})
   const [loading, setLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [submitting, setSubmitting] = useState(false)
   
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 4
+
+  const handleUpdateThresholds = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      const updates = {
+        temp_warning: parseFloat(editForm.temp_warning),
+        temp_critical: parseFloat(editForm.temp_critical),
+        vibration_limit: parseFloat(editForm.vibration_limit),
+        humidity_warning: parseFloat(editForm.humidity_warning),
+        humidity_critical: parseFloat(editForm.humidity_critical)
+      }
+      await dashboardService.updateThresholds(showEditModal.shelter_id, updates)
+      
+      setThresholds(prev => ({
+        ...prev,
+        [showEditModal.shelter_id]: {
+          ...prev[showEditModal.shelter_id],
+          ...updates
+        }
+      }))
+      
+      setShowEditModal(null)
+    } catch (error) {
+      console.error('Error updating thresholds:', error)
+      alert('Failed to update thresholds: ' + error.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -381,7 +414,7 @@ function ThresholdsTab() {
           <div key={shelter.shelter_id} className="glass-card p-5">
             <h3 className="mb-3 text-sm font-semibold text-surface-200">{shelter.shelter_name}</h3>
             {t ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-surface-500">Temp Warning</p>
                   <p className="text-lg font-bold text-amber-400">{t.temp_warning}°C</p>
@@ -398,11 +431,29 @@ function ThresholdsTab() {
                   <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Warning</p>
                   <p className="text-lg font-bold text-sky-400">{t.humidity_warning}%</p>
                 </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Critical</p>
+                  <p className="text-lg font-bold text-red-400">{t.humidity_critical || 90}%</p>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-surface-500 italic">No thresholds configured for this shelter.</p>
             )}
-            <button className="btn btn-ghost mt-4 text-xs">Edit Thresholds</button>
+            <button 
+              className="btn btn-ghost mt-4 text-xs"
+              onClick={() => {
+                setEditForm({
+                  temp_warning: t?.temp_warning || 35.0,
+                  temp_critical: t?.temp_critical || 40.0,
+                  vibration_limit: t?.vibration_limit || 2.0,
+                  humidity_warning: t?.humidity_warning || 80.0,
+                  humidity_critical: t?.humidity_critical || 90.0,
+                })
+                setShowEditModal(shelter)
+              }}
+            >
+              Edit Thresholds
+            </button>
           </div>
         )
       }) : (
@@ -412,6 +463,94 @@ function ThresholdsTab() {
       )}
       
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
+      {/* Edit Thresholds Modal */}
+      {showEditModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowEditModal(null)}
+        >
+          <div
+            className="glass-card mx-4 w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-surface-200">Edit Thresholds</h2>
+              <button
+                onClick={() => setShowEditModal(null)}
+                className="text-surface-500 hover:text-surface-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateThresholds} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Temp Warning (°C)</label>
+                  <input
+                    type="number" step="any" required
+                    value={editForm.temp_warning}
+                    onChange={(e) => setEditForm({ ...editForm, temp_warning: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Temp Critical (°C)</label>
+                  <input
+                    type="number" step="any" required
+                    value={editForm.temp_critical}
+                    onChange={(e) => setEditForm({ ...editForm, temp_critical: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Humidity Warning (%)</label>
+                  <input
+                    type="number" step="any" required
+                    value={editForm.humidity_warning}
+                    onChange={(e) => setEditForm({ ...editForm, humidity_warning: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Humidity Critical (%)</label>
+                  <input
+                    type="number" step="any" required
+                    value={editForm.humidity_critical}
+                    onChange={(e) => setEditForm({ ...editForm, humidity_critical: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs text-surface-400">Vibration Limit (g)</label>
+                  <input
+                    type="number" step="any" required
+                    value={editForm.vibration_limit}
+                    onChange={(e) => setEditForm({ ...editForm, vibration_limit: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(null)}
+                  className="btn btn-ghost flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn btn-primary flex-1"
+                >
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

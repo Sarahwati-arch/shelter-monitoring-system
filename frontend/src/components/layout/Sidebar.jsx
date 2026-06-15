@@ -33,18 +33,14 @@ export default function Sidebar({ collapsed, setCollapsed, mobileMenuOpen }) {
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 px-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.2)]">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 shadow-lg shadow-primary-500/20">
-          <Activity className="h-5 w-5 text-white" />
-        </div>
-        {!collapsed && (
-          <div className="animate-[fade-in_0.2s_ease-out] overflow-hidden">
-            <h1 className="text-sm font-bold tracking-tight text-surface-100">
-              ShelterGuard
-            </h1>
-            <p className="text-[10px] font-medium text-surface-500">
-              Monitoring System
-            </p>
+      <div className={cn("flex h-16 items-center px-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.2)]", collapsed ? "justify-center" : "justify-start")}>
+        {collapsed ? (
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 shadow-lg shadow-primary-500/20">
+            <Activity className="h-5 w-5 text-white" />
+          </div>
+        ) : (
+          <div className="animate-[fade-in_0.2s_ease-out] overflow-hidden flex items-center justify-center w-full">
+            <img src="/images/logo_horizontal.svg" className="h-12 w-auto" alt="nav-header-telkom" />
           </div>
         )}
       </div>

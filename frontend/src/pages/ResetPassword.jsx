@@ -65,16 +65,15 @@ export default function ResetPassword() {
       </div>
 
       <div className="relative w-full max-w-sm animate-[slide-up_0.4s_ease-out]">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 shadow-lg shadow-primary-500/25">
-            <Activity className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-surface-100">ShelterGuard</h1>
-          <p className="mt-1 text-sm text-surface-500">Monitoring System</p>
+        {/* Header / Logo */}
+        <div className="mb-8 flex flex-col items-center justify-center text-center">
+          <img src="/images/logo_horizontal.svg" className="h-14 w-auto mb-6" alt="Telkom Logo" />
+          <h1 className="text-2xl font-bold tracking-tight text-surface-100">
+            Shelter Monitoring System
+          </h1>
         </div>
 
-        <div className="glass-card p-6">
+        <div className="glass-card p-6 sm:p-8">
           {success ? (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <CheckCircle className="h-10 w-10 text-emerald-400" />
@@ -88,8 +87,10 @@ export default function ResetPassword() {
             </div>
           ) : (
             <>
-              <h2 className="mb-1 text-base font-semibold text-surface-200">Set New Password</h2>
-              <p className="mb-6 text-xs text-surface-500">Enter your new password below.</p>
+              <div className="text-center mb-6">
+                <h2 className="mb-1 text-base font-semibold text-surface-200">Set New Password</h2>
+                <p className="text-xs text-surface-500">Enter your new password below.</p>
+              </div>
 
               {error && (
                 <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-500/10 p-3 text-xs text-danger-400">
@@ -144,7 +145,7 @@ export default function ResetPassword() {
         </div>
 
         <p className="mt-6 text-center text-[10px] text-surface-600">
-          ShelterGuard Monitoring System v1.0
+          Shelter Monitoring System v1.0
         </p>
       </div>
     </div>

@@ -221,17 +221,38 @@ def load_thresholds(shelter_id: str) -> dict:
     return defaults
 
 
-def calc_temp_risk_level(temperature: float, shelter_id: str) -> str:
-    """Calculate risk level for temperature based on shelter thresholds."""
+def calc_env_risk_level(temperature: float, humidity: float, shelter_id: str) -> tuple[str, list[str]]:
+    """Calculate risk level for temperature and humidity based on shelter thresholds."""
     thresholds = load_thresholds(shelter_id)
     temp_critical = thresholds.get("temp_critical", 40.0)
     temp_warning = thresholds.get("temp_warning", 35.0)
+    hum_critical = thresholds.get("humidity_critical", 90.0)
+    hum_warning = thresholds.get("humidity_warning", 80.0)
 
+    temp_risk = "low"
     if temperature >= temp_critical:
-        return "high"
+        temp_risk = "high"
     elif temperature >= temp_warning:
-        return "medium"
-    return "low"
+        temp_risk = "medium"
+
+    hum_risk = "low"
+    if humidity >= hum_critical:
+        hum_risk = "high"
+    elif humidity >= hum_warning:
+        hum_risk = "medium"
+        
+    risk_map = {"low": 0, "medium": 1, "high": 2}
+    level_map = {0: "low", 1: "medium", 2: "high"}
+    
+    overall_risk = level_map[max(risk_map[temp_risk], risk_map[hum_risk])]
+    
+    causes = []
+    if temp_risk != "low":
+        causes.append("temp")
+    if hum_risk != "low":
+        causes.append("humidity")
+        
+    return overall_risk, causes
 
 
 def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
@@ -246,7 +267,7 @@ def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
             temperature = 0.0
         humidity = 0.0
 
-    risk_level = calc_temp_risk_level(temperature, shelter_id)
+    risk_level, causes = calc_env_risk_level(temperature, humidity, shelter_id)
 
     row = {
         "shelter_id": shelter_id,
@@ -259,7 +280,7 @@ def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
 
     response = supabase.table("temperature_data").insert(row).execute()
     temp_data_id = response.data[0]["data_id"]
-    print(f"  -> Inserted temp | shelter={shelter_id} | device={device_id} | "
+    print(f"  -> Inserted env | shelter={shelter_id} | device={device_id} | "
           f"temp={temperature:.1f}°C | humidity={humidity:.1f}% | risk={risk_level}")
 
     # Update device last_seen
@@ -274,12 +295,18 @@ def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
     if risk_level in ("medium", "high"):
         thresholds = load_thresholds(shelter_id)
         severity = "critical" if risk_level == "high" else "warning"
-        limit = thresholds.get("temp_critical" if risk_level == "high" else "temp_warning", 40.0)
-
-        msg = (
-            f"Temperature {'critical' if risk_level == 'high' else 'warning'}: "
-            f"{temperature:.1f}°C (limit: {limit:.1f}°C)"
-        )
+        
+        msg_parts = []
+        if "temp" in causes:
+            is_high = temperature >= thresholds.get("temp_critical", 40.0)
+            temp_limit = thresholds.get("temp_critical" if is_high else "temp_warning", 40.0)
+            msg_parts.append(f"Temp: {temperature:.1f}°C (limit: {temp_limit:.1f}°C)")
+        if "humidity" in causes:
+            is_high = humidity >= thresholds.get("humidity_critical", 90.0)
+            hum_limit = thresholds.get("humidity_critical" if is_high else "humidity_warning", 90.0)
+            msg_parts.append(f"Hum: {humidity:.1f}% (limit: {hum_limit:.1f}%)")
+            
+        msg = f"Environment {'critical' if risk_level == 'high' else 'warning'}: " + " | ".join(msg_parts)
 
         alert = {
             "shelter_id": shelter_id,
@@ -414,10 +441,20 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     # Generate alert if high or critical risk
     if final_risk in ["high", "critical"]:
         magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+        thresholds = load_thresholds(shelter_id)
+        vib_limit = thresholds.get("vibration_limit", 2.0)
+        
+        ai_label = metadata.get("ai_label", "Unknown")
+        ai_conf = metadata.get("ai_confidence", 0.0)
+        
+        if not metadata.get("ai_fallback", True) and ai_label != "Unknown":
+            ai_info = f" | AI Detected: {ai_label} ({(ai_conf*100):.0f}%)"
+        else:
+            ai_info = ""
         
         msg = (
-            f"Vibration critical: magnitude {magnitude:.2f} g "
-            f"(limit: {VIBRATION_WARNING} g)"
+            f"Vibration {final_risk}: magnitude {magnitude:.2f} g "
+            f"(limit: {vib_limit:.1f} g){ai_info}"
         )
 
         alert = {

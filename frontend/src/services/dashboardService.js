@@ -169,6 +169,21 @@ export const dashboardService = {
   },
 
   /**
+   * Update thresholds for a shelter
+   */
+  async updateThresholds(shelterId, updates) {
+    const { data, error } = await supabase
+      .from('thresholds')
+      .update(updates)
+      .eq('shelter_id', shelterId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  /**
    * Get sensor history for charts (last X hours)
    */
   async getSensorHistory(shelterId, hours = 6) {

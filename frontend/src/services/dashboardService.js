@@ -32,10 +32,23 @@ export const dashboardService = {
     const { data, error } = await supabase
       .from('shelters')
       .select('*')
-      .order('shelter_name', { ascending: false })
     
     if (error) throw error
-    return data || []
+
+    // Custom sort: East -> Central -> West
+    const order = {
+      'East Jakarta shelter': 1,
+      'Central Jakarta shelter': 2,
+      'West Jakarta shelter': 3
+    }
+
+    const sortedData = (data || []).sort((a, b) => {
+      const orderA = order[a.shelter_name] || 99
+      const orderB = order[b.shelter_name] || 99
+      return orderA - orderB
+    })
+
+    return sortedData
   },
 
   /**
@@ -183,14 +196,11 @@ export const dashboardService = {
     const tempData = tempRes.data || []
     const vibData = vibRes.data || []
 
-    // Merge history by timestamp
-    const history = tempData.map(t => {
-      const v = vibData.find(vib => vib.timestamp === t.timestamp)
-      const vibrationMagnitude = v 
-        ? Number(Math.sqrt(Math.pow(v.accel_x, 2) + Math.pow(v.accel_y, 2) + Math.pow(v.accel_z, 2)).toFixed(2))
-        : 0
-        
-      return {
+    // Merge history using a map to ensure all timestamps are included
+    const historyMap = {}
+
+    tempData.forEach(t => {
+      historyMap[t.timestamp] = {
         timestamp: t.timestamp,
         temperature: t.temperature,
         humidity: t.humidity,
@@ -199,6 +209,23 @@ export const dashboardService = {
       }
     })
 
+    vibData.forEach(v => {
+      const vibrationMagnitude = Number(Math.sqrt(Math.pow(v.accel_x, 2) + Math.pow(v.accel_y, 2) + Math.pow(v.accel_z, 2)).toFixed(2))
+      if (historyMap[v.timestamp]) {
+        historyMap[v.timestamp].vibration = vibrationMagnitude
+        historyMap[v.timestamp].metadata = v.metadata || {}
+      } else {
+        historyMap[v.timestamp] = {
+          timestamp: v.timestamp,
+          temperature: null,
+          humidity: null,
+          vibration: vibrationMagnitude,
+          metadata: v.metadata || {}
+        }
+      }
+    })
+
+    const history = Object.values(historyMap).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     return history
   },
 

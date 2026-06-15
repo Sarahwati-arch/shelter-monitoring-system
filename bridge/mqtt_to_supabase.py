@@ -8,6 +8,7 @@ import math
 import os
 import sys
 import time
+import requests
 from dotenv import load_dotenv
 
 import numpy as np
@@ -233,10 +234,17 @@ def calc_temp_risk_level(temperature: float, shelter_id: str) -> str:
     return "low"
 
 
-def insert_temperature(payload: dict, shelter_id: str, device_id: str) -> None:
+def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
     """Insert a temperature reading into Supabase."""
-    temperature = float(payload.get("temperature", 0.0))
-    humidity = float(payload.get("humidity", 0.0))
+    if isinstance(payload, dict):
+        temperature = float(payload.get("temperature", 0.0))
+        humidity = float(payload.get("humidity", 0.0))
+    else:
+        try:
+            temperature = float(payload)
+        except (ValueError, TypeError):
+            temperature = 0.0
+        humidity = 0.0
 
     risk_level = calc_temp_risk_level(temperature, shelter_id)
 
@@ -268,19 +276,24 @@ def insert_temperature(payload: dict, shelter_id: str, device_id: str) -> None:
         severity = "critical" if risk_level == "high" else "warning"
         limit = thresholds.get("temp_critical" if risk_level == "high" else "temp_warning", 40.0)
 
+        msg = (
+            f"Temperature {'critical' if risk_level == 'high' else 'warning'}: "
+            f"{temperature:.1f}°C (limit: {limit:.1f}°C)"
+        )
+
         alert = {
             "shelter_id": shelter_id,
             "temp_data_id": temp_data_id,
             "alert_type": "temp",
             "status": "open",
             "severity": severity,
-            "message": (
-                f"Temperature {'critical' if risk_level == 'high' else 'warning'}: "
-                f"{temperature:.1f}°C (limit: {limit:.1f}°C)"
-            ),
+            "message": msg,
         }
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: temp {severity}!")
+        
+        if risk_level == "high":
+            send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 def _get_buffer(device_id: str) -> dict:
@@ -398,23 +411,27 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     except Exception:
         pass
 
-    # Generate alert if high risk
-    if risk_level == "high":
+    # Generate alert if high or critical risk
+    if final_risk in ["high", "critical"]:
         magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
         
+        msg = (
+            f"Vibration critical: magnitude {magnitude:.2f} g "
+            f"(limit: {VIBRATION_WARNING} g)"
+        )
+
         alert = {
             "shelter_id": shelter_id,
             "vibration_data_id": vibration_data_id,
             "alert_type": "vibration",
             "status": "open",
             "severity": "critical",
-            "message": (
-                f"Vibration critical: magnitude {magnitude:.2f} g "
-                f"(limit: {VIBRATION_WARNING} g)"
-            ),
+            "message": msg,
         }
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: vibration critical!")
+        
+        send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 # ---------------------------------------------------------------------------
@@ -425,22 +442,25 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
 def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         print(f"Connected to MQTT broker {MQTT_BROKER}:{MQTT_PORT}")
-        # Subscribe to all topics
-        client.subscribe("#")
-        print("Subscribed to: #")
+        # Public brokers often block root '#' subscriptions, use '+' instead
+        client.subscribe("+/Accel")
+        client.subscribe("+/Gyro")
+        client.subscribe("+/Temp")
+        print("Subscribed to: +/Accel, +/Gyro, +/Temp")
     else:
         print(f"MQTT connection failed with code: {reason_code}")
 
 
 def on_message(client, userdata, msg):
+    print(f"DEBUG: received message on {msg.topic}")
     topic = msg.topic
     # Expecting: <device_token>/<sensor_type> (e.g. tok_esp32_temp_alpha_001/Temp)
     parts = topic.split('/')
     if len(parts) != 2:
         return  # Ignore invalid topics
 
-    device_token = parts[0]
-    sensor_type = parts[1]
+    device_token = parts[0].strip()
+    sensor_type = parts[1].strip()
 
     # Resolve token -> device_id + shelter_id
     device = resolve_device(device_token)

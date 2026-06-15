@@ -1,0 +1,13 @@
+# Shelter Monitoring System — Face Recognition requirements
+# Install: pip install -r requirements.txt
+
+torch>=2.2.0
+torchvision>=0.17.0
+opencv-python>=4.9.0
+deepface>=0.0.92
+mtcnn>=0.1.1
+insightface>=0.7.3
+facenet-pytorch>=2.5.3
+numpy>=1.26.0
+Pillow>=10.2.0
+onnxruntime-gpu>=1.17.0   # for InsightFace GPU inference; swap to onnxruntime on CPU-only

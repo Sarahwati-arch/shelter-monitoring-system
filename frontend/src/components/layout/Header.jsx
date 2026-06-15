@@ -1,11 +1,11 @@
-import { Bell, Search, ChevronDown, Sun, Moon, LogOut, User as UserIcon } from 'lucide-react'
+import { Bell, ChevronDown, Sun, Moon, LogOut, User as UserIcon, Menu } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
 import { useState, useEffect, useRef } from 'react'
 import { timeAgo } from '@/utils/helpers'
 import { useAuthStore } from '@/stores/authStore'
 import { useNavigate } from 'react-router-dom'
 
-export default function Header({ title }) {
+export default function Header({ title, setMobileMenuOpen }) {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(
@@ -60,23 +60,21 @@ export default function Header({ title }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-surface-950/90 px-6 backdrop-blur-2xl shadow-sm shadow-surface-800/10">
-      {/* Page Title */}
-      <div>
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-surface-950/90 px-4 md:px-6 backdrop-blur-2xl shadow-sm shadow-surface-800/10">
+      {/* Left side: Hamburger (Mobile) + Title */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-800/60 hover:text-surface-200 md:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
         <h2 className="text-lg font-semibold text-surface-100">{title}</h2>
       </div>
 
       {/* Right Actions */}
       <div className="flex items-center gap-3">
-        {/* Search */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-500" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="input w-64 pl-9 text-sm"
-          />
-        </div>
+
 
         {/* Theme Toggle */}
         <button

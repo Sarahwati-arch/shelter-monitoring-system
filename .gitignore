@@ -4,6 +4,9 @@ venv/
 bridge/venv/
 __pycache__/
 *.pyc
+venv/
+env/
+.venv/
 
 # Environment variables
 .env
@@ -30,8 +33,70 @@ form_proposal/
 research_blueprint.md
 research_blueprint_submission.md
 
-# Datasets
-vibration_ai/
+# Datasets & ML Models
+*.npy
+vibration_ai/class_*/
+vibration_ai/*.json
+vibration_ai/*.wav
+vibration_ai/models/*.pkl
+vibration_ai/models/*.txt
+vibration_ai/models/!*.keep
 
 # Supabase
 .supabase/
+
+# ─────────────────────────────────────────────────────────────
+# face_recognition/.gitignore
+# ─────────────────────────────────────────────────────────────
+
+# ── Raw dataset files (large, download separately) ──────────
+face_recognition/data/wider_raw/
+face_recognition/data/environment_frames/samples/
+face_recognition/data/environment_frames/annotated/
+face_recognition/data/faces/
+face_recognition/logs/
+
+
+
+
+# ── Model weights (auto-downloaded by MTCNN / DeepFace) ─────
+models/
+~/.deepface/
+~/.insightface/
+
+# ── Logs (generated at runtime) ─────────────────────────────
+logs/*.log
+logs/*.json
+logs/*.jsonl
+logs/wider_face_tuning_report.md
+logs/wider_face_tuning_raw.json
+# Keep the template files that are hand-edited
+!logs/confidence_threshold_log.md
+!logs/.gitkeep
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ── Jupyter ──────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+models/

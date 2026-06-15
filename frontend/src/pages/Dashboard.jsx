@@ -48,51 +48,89 @@ export default function Dashboard() {
     fetchShelters()
   }, [])
 
-  // Fetch Data for Selected Shelter
-  const fetchDashboardData = useCallback(async () => {
+  // Fetch Initial Heavy Data
+  const fetchInitialData = useCallback(async () => {
     if (!selectedShelter) return
 
     try {
+      setLoading(true)
       const [
-        latestReading,
         currentThresholds,
         history,
         stats
       ] = await Promise.all([
-        dashboardService.getLatestReading(selectedShelter),
         dashboardService.getThresholds(selectedShelter),
         dashboardService.getSensorHistory(selectedShelter, chartHours),
         dashboardService.getAlertStats(selectedShelter)
       ])
 
-      setLatest(latestReading)
       setThresholds(currentThresholds)
       setSensorData(history)
       setAlertStats(stats)
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error('Error fetching initial dashboard data:', error)
     } finally {
       setLoading(false)
     }
   }, [selectedShelter, chartHours])
 
+  // Fetch Lightweight Realtime Data
+  const fetchRealtimeData = useCallback(async () => {
+    if (!selectedShelter) return
+
+    try {
+      const [latestReading, stats] = await Promise.all([
+        dashboardService.getLatestReading(selectedShelter),
+        dashboardService.getAlertStats(selectedShelter) // alert stats are lightweight
+      ])
+
+      setLatest(latestReading)
+      setAlertStats(stats)
+
+      // Append latest reading to history without refetching everything
+      if (latestReading && latestReading.timestamp) {
+        setSensorData(prev => {
+          if (!prev || prev.length === 0) return prev
+          
+          // Avoid duplicate timestamps
+          if (prev[prev.length - 1].timestamp === latestReading.timestamp) {
+            return prev
+          }
+          
+          const newData = [...prev, latestReading]
+          const cutoff = Date.now() - (chartHours * 60 * 60 * 1000)
+          
+          // Keep only data within the selected hours
+          return newData.filter(d => new Date(d.timestamp).getTime() > cutoff)
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching realtime dashboard data:', error)
+    }
+  }, [selectedShelter, chartHours])
+
+  // Initial load when shelter or hours change
   useEffect(() => {
-    fetchDashboardData()
-    
-    // Auto-refresh every 5 seconds
+    fetchInitialData()
+    fetchRealtimeData()
+  }, [fetchInitialData, fetchRealtimeData])
+
+  // Auto-refresh interval for realtime data
+  useEffect(() => {
     const interval = setInterval(() => {
-      fetchDashboardData()
+      fetchRealtimeData()
     }, 5000)
     
     return () => clearInterval(interval)
-  }, [fetchDashboardData])
+  }, [fetchRealtimeData])
 
   const shelter = useMemo(() => 
     shelters.find((s) => s.shelter_id === selectedShelter),
     [shelters, selectedShelter]
   )
 
-  const tempRiskLevel = latest?.temp_risk_level || 'low'
+  const tempRiskLevel = !latest || !thresholds ? 'low' : latest.temperature >= (thresholds.temp_critical || 40) ? 'high' : latest.temperature >= (thresholds.temp_warning || 35) ? 'medium' : 'low'
+  const humidRiskLevel = !latest || !thresholds ? 'low' : latest.humidity >= (thresholds.humidity_critical || 90) ? 'high' : latest.humidity >= (thresholds.humidity_warning || 80) ? 'medium' : 'low'
   const vibRiskLevel = latest?.vib_risk_level || 'low'
 
   if (loading && shelters.length === 0) {
@@ -137,6 +175,31 @@ export default function Dashboard() {
         {loading && <Loader2 className="h-4 w-4 animate-spin text-primary-500" />}
       </div>
 
+      {/* Risk Level Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatusCard
+          title="Temp. Risk Level"
+          value={tempRiskLevel.toUpperCase()}
+          subtitle="Temperature Status"
+          icon={Thermometer}
+          color={tempRiskLevel === 'high' ? 'danger' : tempRiskLevel === 'medium' ? 'warning' : 'success'}
+        />
+        <StatusCard
+          title="Humid. Risk Level"
+          value={humidRiskLevel.toUpperCase()}
+          subtitle="Humidity Status"
+          icon={Droplets}
+          color={humidRiskLevel === 'high' ? 'danger' : humidRiskLevel === 'medium' ? 'warning' : 'success'}
+        />
+        <StatusCard
+          title="Vib. Risk Level"
+          value={vibRiskLevel.toUpperCase()}
+          subtitle="Structural Status"
+          icon={Activity}
+          color={vibRiskLevel === 'high' ? 'danger' : vibRiskLevel === 'medium' ? 'warning' : 'success'}
+        />
+      </div>
+
       {/* Gauge Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <GaugeCard
@@ -156,6 +219,7 @@ export default function Dashboard() {
           min={20}
           max={100}
           warningThreshold={thresholds?.humidity_warning || 80}
+          criticalThreshold={thresholds?.humidity_critical || 90}
           icon={Droplets}
         />
         <GaugeCard
@@ -213,6 +277,27 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Humidity Chart */}
+          <div className="glass-card p-5">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-surface-200">
+              <Droplets className="h-4 w-4 text-sky-400" />
+              Humidity Trend
+            </h3>
+            <div className="h-48">
+              {sensorData.length > 0 ? (
+                <SensorChart
+                  sensorData={sensorData}
+                  type="humidity"
+                  hours={chartHours}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-surface-500">
+                  No data available for this period
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Vibration Chart */}
           <div className="glass-card p-5">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-surface-200">
@@ -234,40 +319,29 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* CCTV Feed */}
-          <div className="glass-card p-5">
+        </div>
+
+        {/* Right Column: AI Diagnostics */}
+        <div className="flex flex-col gap-6">
+
+          {/* AI Diagnostics Card */}
+          <div className="flex-none">
+            <AIVibrationCard 
+              latestMetadata={latest?.vibration_metadata} 
+              sensorData={sensorData} 
+            />
+          </div>
+
+          {/* CCTV Feed moved here */}
+          <div className="glass-card p-5 flex-1 flex flex-col">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-surface-200">
               <Camera className="h-4 w-4 text-primary-400" />
               CCTV Camera
             </h3>
-            <CCTVFeed shelterId={selectedShelter} limit={4} />
+            <div className="flex-1">
+              <CCTVFeed shelterId={selectedShelter} limit={4} />
+            </div>
           </div>
-        </div>
-
-        {/* Right Column: AI Diagnostics */}
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-4">
-            <StatusCard
-              title="Temp. Risk Level"
-              value={tempRiskLevel.toUpperCase()}
-              subtitle="Temperature & Humidity"
-              icon={Thermometer}
-              color={tempRiskLevel === 'high' ? 'danger' : tempRiskLevel === 'medium' ? 'warning' : 'success'}
-            />
-            <StatusCard
-              title="Vib. Risk Level"
-              value={vibRiskLevel.toUpperCase()}
-              subtitle="Structural Assessment"
-              icon={Activity}
-              color={vibRiskLevel === 'high' ? 'danger' : vibRiskLevel === 'medium' ? 'warning' : 'success'}
-            />
-          </div>
-
-          {/* AI Diagnostics Card */}
-          <AIVibrationCard 
-            latestMetadata={latest?.vibration_metadata} 
-            sensorData={sensorData} 
-          />
         </div>
       </div>
     </div>

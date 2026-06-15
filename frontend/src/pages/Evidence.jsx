@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Camera, ImageOff, Filter, Loader2 } from 'lucide-react'
 import { formatDateTime, timeAgo } from '@/utils/helpers'
 import { dashboardService } from '@/services/dashboardService'
+import Pagination from '@/components/ui/Pagination'
 
 const alertTypeColors = {
   intrusion: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -14,6 +15,8 @@ export default function Evidence() {
   const [selectedShelter, setSelectedShelter] = useState('all')
   const [evidence, setEvidence] = useState([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 9
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -41,6 +44,22 @@ export default function Evidence() {
     }
     fetchEvidence()
   }, [selectedShelter])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedShelter])
+
+  const totalPages = Math.ceil(evidence.length / itemsPerPage)
+  const paginatedEvidence = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return evidence.slice(start, start + itemsPerPage)
+  }, [evidence, currentPage, itemsPerPage])
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [evidence, currentPage, totalPages])
 
   if (loading && evidence.length === 0) {
     return (
@@ -75,52 +94,54 @@ export default function Evidence() {
       </div>
 
       {evidence.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {evidence.map((item) => (
-            <div
-              key={item.evidence_id}
-              className="glass-card group relative aspect-video overflow-hidden border border-surface-800/40 transition-all hover:border-surface-700/60"
-            >
-              {item.public_url ? (
-                <img
-                  src={item.public_url}
-                  alt="Evidence"
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center bg-surface-900/50">
-                  <div className="text-center">
-                    <ImageOff className="mx-auto mb-2 h-8 w-8 text-surface-700" />
-                    <p className="text-xs text-surface-600">No image available</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {paginatedEvidence.map((item) => (
+              <div
+                key={item.evidence_id}
+                className="glass-card group relative aspect-video overflow-hidden border border-surface-800/40 transition-all hover:border-surface-700/60"
+              >
+                {item.public_url ? (
+                  <img
+                    src={item.public_url}
+                    alt="Evidence"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-surface-900/50">
+                    <div className="text-center">
+                      <ImageOff className="mx-auto mb-2 h-8 w-8 text-surface-700" />
+                      <p className="text-xs text-surface-600">No image available</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Overlay info */}
+                <div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/80 via-transparent to-black/40 p-3 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex justify-between">
+                    <span
+                      className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${alertTypeColors[item.alerts?.alert_type] || 'bg-surface-500/20 text-surface-400 border-surface-500/30'
+                        }`}
+                    >
+                      {item.alerts?.alert_type || 'Manual'}
+                    </span>
+                    <span className="text-[9px] font-medium text-white/70">
+                      {timeAgo(item.captured_at)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-white">
+                      {item.alerts?.shelters?.shelter_name}
+                    </p>
+                    <p className="text-[9px] text-white/60">
+                      {formatDateTime(item.captured_at)}
+                    </p>
                   </div>
                 </div>
-              )}
-
-              {/* Overlay info */}
-              <div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/80 via-transparent to-black/40 p-3 opacity-0 transition-opacity group-hover:opacity-100">
-                <div className="flex justify-between">
-                  <span
-                    className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${
-                      alertTypeColors[item.alerts?.alert_type] || 'bg-surface-500/20 text-surface-400 border-surface-500/30'
-                    }`}
-                  >
-                    {item.alerts?.alert_type || 'Manual'}
-                  </span>
-                  <span className="text-[9px] font-medium text-white/70">
-                    {timeAgo(item.captured_at)}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold text-white">
-                    {item.alerts?.shelters?.shelter_name}
-                  </p>
-                  <p className="text-[9px] text-white/60">
-                    {formatDateTime(item.captured_at)}
-                  </p>
-                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </div>
       ) : (
         <div className="flex h-[40vh] flex-col items-center justify-center text-surface-500">

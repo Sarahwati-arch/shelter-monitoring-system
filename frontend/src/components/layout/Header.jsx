@@ -1,6 +1,6 @@
 import { Bell, ChevronDown, Sun, Moon, LogOut, User as UserIcon, Menu } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { timeAgo } from '@/utils/helpers'
 import { useAuthStore } from '@/stores/authStore'
 import { useNavigate } from 'react-router-dom'
@@ -13,6 +13,9 @@ export default function Header({ title, setMobileMenuOpen }) {
   )
   const [openAlerts, setOpenAlerts] = useState([])
 
+  const notifRef = useRef(null)
+  const userMenuRef = useRef(null)
+
   const profile = useAuthStore((state) => state.profile)
   const signOut = useAuthStore((state) => state.signOut)
   const navigate = useNavigate()
@@ -24,6 +27,20 @@ export default function Header({ title, setMobileMenuOpen }) {
       document.documentElement.classList.remove('dark')
     }
   }, [isDarkMode])
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false)
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     async function fetchOpenAlerts() {
@@ -38,7 +55,9 @@ export default function Header({ title, setMobileMenuOpen }) {
   }, [])
 
   const handleLogout = async () => {
-    await signOut()
+    setShowUserMenu(false) // Instant visual feedback
+    // Perform sign out without blocking navigation
+    signOut().catch(console.error)
     navigate('/login')
   }
 
@@ -69,27 +88,22 @@ export default function Header({ title, setMobileMenuOpen }) {
         </button>
 
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notifRef}>
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="relative flex h-9 w-9 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-800/60 hover:text-surface-200"
           >
             <Bell className="h-5 w-5" />
             {openAlerts.length > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-danger-500 text-[10px] font-bold text-white shadow-lg shadow-danger-500/30">
-                {openAlerts.length}
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-500 px-1 text-[10px] font-bold leading-none text-white shadow-lg shadow-danger-500/30">
+                {openAlerts.length > 99 ? '99+' : openAlerts.length}
               </span>
             )}
           </button>
 
           {/* Notification Dropdown */}
           {showNotifications && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowNotifications(false)}
-              />
-              <div className="glass-card absolute right-0 top-12 z-50 w-80 overflow-hidden animate-[slide-up_0.2s_ease-out]">
+            <div className="glass-card absolute right-0 top-12 z-50 w-80 overflow-hidden animate-[slide-up_0.2s_ease-out]">
                 <div className="border-b border-surface-700/50 px-4 py-3">
                   <h3 className="text-sm font-semibold text-surface-100">
                     Notifications
@@ -136,8 +150,7 @@ export default function Header({ title, setMobileMenuOpen }) {
                     View All Alerts
                   </button>
                 </div>
-              </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -145,7 +158,7 @@ export default function Header({ title, setMobileMenuOpen }) {
         <div className="h-6 w-px bg-surface-800" />
 
         {/* User */}
-        <div className="relative">
+        <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-800/60"
@@ -168,12 +181,7 @@ export default function Header({ title, setMobileMenuOpen }) {
 
           {/* User Dropdown */}
           {showUserMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowUserMenu(false)}
-              />
-              <div className="glass-card absolute right-0 top-12 z-50 w-48 overflow-hidden animate-[slide-up_0.2s_ease-out]">
+            <div className="glass-card absolute right-0 top-12 z-50 w-48 overflow-hidden animate-[slide-up_0.2s_ease-out]">
                 <div className="flex flex-col p-1.5">
                   <button
                     onClick={() => { navigate('/profile'); setShowUserMenu(false); }}
@@ -191,8 +199,7 @@ export default function Header({ title, setMobileMenuOpen }) {
                     Sign Out
                   </button>
                 </div>
-              </div>
-            </>
+            </div>
           )}
         </div>
       </div>

@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 venv/
+bridge/venv/
 __pycache__/
 *.pyc
 venv/
@@ -27,7 +28,10 @@ nul
 # Local planning
 master_plan.md
 task_plan.md
+testing_plan.md
 form_proposal/
+research_blueprint.md
+research_blueprint_submission.md
 
 # Datasets & ML Models
 *.npy

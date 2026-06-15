@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
 import { formatDateTime, timeAgo, getSeverityBadge, getStatusBadge } from '@/utils/helpers'
+import Pagination from '@/components/ui/Pagination'
 
 const alertTypeIcons = {
   temp: Thermometer,
@@ -37,6 +38,8 @@ export default function Alerts() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   const fetchAlerts = async () => {
     setLoading(true)
@@ -64,6 +67,23 @@ export default function Alerts() {
       return true
     })
   }, [alerts, searchQuery])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, typeFilter, severityFilter])
+
+  const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage)
+  const paginatedAlerts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredAlerts.slice(start, start + itemsPerPage)
+  }, [filteredAlerts, currentPage, itemsPerPage])
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [filteredAlerts, currentPage, totalPages])
 
   const handleUpdateStatus = async (alertId, newStatus) => {
     setActionLoading(true)
@@ -168,7 +188,7 @@ export default function Alerts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-800/30">
-              {filteredAlerts.map((alert) => {
+              {paginatedAlerts.map((alert) => {
                 const Icon = alertTypeIcons[alert.alert_type] || AlertTriangle
                 return (
                   <tr
@@ -211,6 +231,12 @@ export default function Alerts() {
             </tbody>
           </table>
         </div>
+        
+        {filteredAlerts.length > 0 && (
+          <div className="px-4 pb-4">
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+          </div>
+        )}
 
         {!loading && filteredAlerts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-surface-500">
@@ -222,8 +248,14 @@ export default function Alerts() {
 
       {/* Alert Detail Modal */}
       {selectedAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-[fade-in_0.15s_ease-out]">
-          <div className="glass-card m-4 w-full max-w-lg animate-[slide-up_0.2s_ease-out]">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-[fade-in_0.15s_ease-out]"
+          onClick={() => setSelectedAlert(null)}
+        >
+          <div
+            className="glass-card m-4 w-full max-w-lg animate-[slide-up_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-surface-700/50 p-5">
               <h3 className="text-base font-semibold text-surface-100">Alert Details</h3>
               <button

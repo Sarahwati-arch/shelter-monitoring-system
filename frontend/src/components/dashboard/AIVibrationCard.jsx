@@ -1,73 +1,7 @@
-import { useMemo } from 'react'
-import { Doughnut } from 'react-chartjs-2'
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js'
 import { BrainCircuit, AlertTriangle, ShieldCheck } from 'lucide-react'
-
-ChartJS.register(ArcElement, Tooltip, Legend)
 
 export default function AIVibrationCard({ latestMetadata, sensorData }) {
   const hasData = latestMetadata && Object.keys(latestMetadata).length > 0
-
-  const chartData = useMemo(() => {
-    if (!sensorData || sensorData.length === 0) return null
-
-    const counts = sensorData.reduce((acc, curr) => {
-      const label = curr.metadata?.ai_label
-      if (label && label !== 'Unknown') {
-        acc[label] = (acc[label] || 0) + 1
-      }
-      return acc
-    }, {})
-
-    if (Object.keys(counts).length === 0) return null
-
-    return {
-      labels: Object.keys(counts),
-      datasets: [
-        {
-          data: Object.values(counts),
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.8)', // blue
-            'rgba(16, 185, 129, 0.8)', // green
-            'rgba(245, 158, 11, 0.8)', // amber
-            'rgba(239, 68, 68, 0.8)',  // red
-            'rgba(139, 92, 246, 0.8)', // purple
-          ],
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-          borderWidth: 1,
-        },
-      ],
-    }
-  }, [sensorData])
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    plugins: {
-      legend: {
-        position: 'right',
-        labels: {
-          color: '#9ca3af',
-          font: { size: 11 },
-          padding: 15,
-        },
-      },
-      tooltip: {
-        backgroundColor: 'rgba(17, 24, 39, 0.9)',
-        titleColor: '#f3f4f6',
-        bodyColor: '#d1d5db',
-        borderColor: 'rgba(55, 65, 81, 0.5)',
-        borderWidth: 1,
-      },
-    },
-    cutout: '70%',
-  }
 
   return (
     <div className="glass-card p-5 h-full flex flex-col">
@@ -133,21 +67,6 @@ export default function AIVibrationCard({ latestMetadata, sensorData }) {
             </div>
           </div>
 
-          {/* Chart Section */}
-          <div className="flex-1 min-h-[160px] flex flex-col">
-            <p className="text-xs text-surface-400 mb-3 font-medium uppercase tracking-wider">
-              Class Distribution (Selected TimeRange)
-            </p>
-            {chartData ? (
-              <div className="relative h-48 w-full">
-                <Doughnut data={chartData} options={chartOptions} />
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-xs text-surface-500 italic">
-                Not enough historical AI data to render chart.
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

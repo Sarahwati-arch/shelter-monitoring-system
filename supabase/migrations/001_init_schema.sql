@@ -57,6 +57,7 @@ CREATE TABLE thresholds (
     temp_critical FLOAT DEFAULT 40.0,
     vibration_limit FLOAT DEFAULT 2.0,
     humidity_warning FLOAT DEFAULT 80.0,
+    humidity_critical FLOAT DEFAULT 90.0,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

@@ -9,6 +9,7 @@ import Devices from '@/pages/Devices'
 import Admin from '@/pages/Admin'
 import Profile from '@/pages/Profile'
 import Login from '@/pages/Login'
+import ResetPassword from '@/pages/ResetPassword'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>

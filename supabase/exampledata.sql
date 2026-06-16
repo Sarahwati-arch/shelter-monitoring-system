@@ -16,8 +16,8 @@ BEGIN
     RETURNING shelter_id INTO v_shelter_id;
 
     -- 2. Tambah Threshold (Batas Aman) untuk Shelter tersebut
-    INSERT INTO thresholds (shelter_id, temp_warning, temp_critical, vibration_limit, humidity_warning)
-    VALUES (v_shelter_id, 35.0, 40.0, 2.5, 85.0);
+    INSERT INTO thresholds (shelter_id, temp_warning, temp_critical, vibration_limit, humidity_warning, humidity_critical)
+    VALUES (v_shelter_id, 35.0, 40.0, 2.5, 85.0, 95.0);
 
     -- 3. Tambah Perangkat (Devices)
     INSERT INTO devices (shelter_id, device_type, device_name, token, status)

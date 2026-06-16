@@ -5,17 +5,17 @@
    ============================================ */
 
 @theme {
-  /* Primary and Semantic Colors (unchanged) */
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
+  /* Primary Colors — Telkom Indonesia Brand Red */
+  --color-primary-50: #fff1f0;
+  --color-primary-100: #ffe0de;
+  --color-primary-200: #ffbbb7;
+  --color-primary-300: #ff8f89;
+  --color-primary-400: #f05650;
+  --color-primary-500: #E42313;  /* TELKOM RED */
+  --color-primary-600: #c41f10;
+  --color-primary-700: #a01a0d;
+  --color-primary-800: #7a140a;
+  --color-primary-900: #520d07;
 
   /* Map CSS variables to Tailwind theme! Missing this broke bg-surface classes */
   --color-surface-50: var(--theme-surface-50);
@@ -60,7 +60,7 @@
   /* Shadows */
   --shadow-card: var(--shadow-base);
   --shadow-card-hover: var(--shadow-hover);
-  --shadow-glow-primary: 0 0 20px rgba(99, 102, 241, 0.3);
+  --shadow-glow-primary: 0 0 20px rgba(228, 35, 19, 0.35);
   --shadow-glow-danger: 0 0 20px rgba(239, 68, 68, 0.3);
   --shadow-glow-success: 0 0 20px rgba(34, 197, 94, 0.3);
 
@@ -78,49 +78,49 @@
 
 @layer base {
   :root {
-    /* Mapped inverted for light mode so classes don't need changing */
-    --theme-surface-50: #0f172a;    
-    --theme-surface-100: #1e293b;
-    --theme-surface-200: #334155;
-    --theme-surface-300: #475569;
-    --theme-surface-400: #64748b;
-    --theme-surface-500: #94a3b8;
-    --theme-surface-600: #cbd5e1;
-    --theme-surface-700: #e2e8f0;   /* slate-200 */
-    --theme-surface-800: #f1f5f9;   /* slate-100 */
-    --theme-surface-900: #f8fafc;   /* slate-50 */
-    --theme-surface-950: #ffffff;   /* white */
+    /* Mapped inverted for light mode — Telkom neutral palette */
+    --theme-surface-50: #1D1D1B;    /* Telkom Off-Black (teks utama) */
+    --theme-surface-100: #2e2e2c;
+    --theme-surface-200: #3b3b39;
+    --theme-surface-300: #4a4a48;
+    --theme-surface-400: #5a5a58;   /* Telkom Grey */
+    --theme-surface-500: #646462;   /* Darker for better contrast on white */
+    --theme-surface-600: #8a8a88;
+    --theme-surface-700: #c8c8c8;
+    --theme-surface-800: #f0f0f0;
+    --theme-surface-900: #ffffff;   /* Pure white to match login */
+    --theme-surface-950: #ffffff;   /* Pure White */
 
     --glass-bg-start: rgba(255, 255, 255, 1);
-    --glass-bg-end: rgba(255, 255, 255, 0.8);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-border-hover: rgba(0, 0, 0, 0.1);
+    --glass-bg-end: rgba(250, 250, 250, 0.95);
+    --glass-border: rgba(29, 29, 27, 0.22); /* Darker border for thicker appearance */
+    --glass-border-hover: rgba(228, 35, 19, 0.25);
 
-    --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-base: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
     --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
   }
 
   .dark {
-    /* Original Dark Mode Values */
-    --theme-surface-50: #f8fafc;
-    --theme-surface-100: #f1f5f9;
-    --theme-surface-200: #e2e8f0;
-    --theme-surface-300: #cbd5e1;
-    --theme-surface-400: #94a3b8;
-    --theme-surface-500: #64748b;
-    --theme-surface-600: #475569;
-    --theme-surface-700: #334155;
-    --theme-surface-800: #1e293b;
-    --theme-surface-900: #0f172a;
-    --theme-surface-950: #020617;
+    /* Dark Mode — Charcoal Netral + Subtle Telkom Red Tint */
+    --theme-surface-50: #f5f3f3;    /* warm white tint */
+    --theme-surface-100: #e8e4e4;
+    --theme-surface-200: #d0caca;
+    --theme-surface-300: #b0a8a8;
+    --theme-surface-400: #a09898;   /* warm grey */
+    --theme-surface-500: #8a8080;   /* lighter for better contrast */
+    --theme-surface-600: #6e6565;   /* dark warm grey */
+    --theme-surface-700: #302828;   /* darker warm */
+    --theme-surface-800: #221a1a;   /* near off-black warm */
+    --theme-surface-900: #1a1212;   /* deep dark, subtle red */
+    --theme-surface-950: #110d0d;   /* darkest charcoal */
 
-    --glass-bg-start: rgba(30, 41, 59, 0.7);
-    --glass-bg-end: rgba(15, 23, 42, 0.8);
-    --glass-border: rgba(148, 163, 184, 0.1);
-    --glass-border-hover: rgba(148, 163, 184, 0.2);
+    --glass-bg-start: rgba(34, 26, 26, 0.78);
+    --glass-bg-end: rgba(20, 14, 14, 0.88);
+    --glass-border: rgba(228, 35, 19, 0.12);      /* subtle Telkom Red border */
+    --glass-border-hover: rgba(228, 35, 19, 0.25); /* red glow on hover */
 
-    --shadow-base: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
-    --shadow-hover: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+    --shadow-base: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.10);
+    --shadow-hover: 0 10px 25px rgba(0, 0, 0, 0.2), 0 4px 10px rgba(228, 35, 19, 0.08);
   }
 
   * {
@@ -248,7 +248,7 @@
   .btn-primary {
     background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-500));
     color: white;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    box-shadow: 0 2px 8px rgba(228, 35, 19, 0.3);
   }
 
   .btn-primary:hover:not(:disabled) {
@@ -299,7 +299,7 @@
 
   .input:focus {
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 0 0 3px rgba(228, 35, 19, 0.15);
   }
 
   /* Select */
@@ -320,6 +320,6 @@
 
   .select:focus {
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 0 0 3px rgba(228, 35, 19, 0.15);
   }
 }

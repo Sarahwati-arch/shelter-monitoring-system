@@ -49,7 +49,7 @@ vibration_ai/models/!*.keep
 face_recognition/data/wider_raw/
 face_recognition/data/environment_frames/samples/
 face_recognition/data/environment_frames/annotated/
-face_recognition/data/faces/
+# face_recognition/data/faces/
 face_recognition/logs/
 
 

@@ -1,0 +1,22 @@
+=== EVALUATION REPORT ===
+Accuracy: 0.9750
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.89      1.00      0.94         8
+           1       1.00      0.88      0.93         8
+           2       1.00      1.00      1.00         8
+           3       1.00      1.00      1.00         8
+           4       1.00      1.00      1.00         8
+
+    accuracy                           0.97        40
+   macro avg       0.98      0.97      0.97        40
+weighted avg       0.98      0.97      0.97        40
+
+Confusion Matrix:
+[[8 0 0 0 0]
+ [1 7 0 0 0]
+ [0 0 8 0 0]
+ [0 0 0 8 0]
+ [0 0 0 0 8]]

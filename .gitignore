@@ -38,9 +38,10 @@ research_blueprint_submission.md
 vibration_ai/class_*/
 vibration_ai/*.json
 vibration_ai/*.wav
-vibration_ai/models/*.pkl
-vibration_ai/models/*.txt
-vibration_ai/models/!*.keep
+# Models are temporarily allowed to be committed for testing on other devices
+# vibration_ai/models/*.pkl
+# vibration_ai/models/*.txt
+# vibration_ai/models/!*.keep
 
 # Supabase
 .supabase/

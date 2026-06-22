@@ -27,9 +27,14 @@ export default function StatusCard({ title, value, subtitle, icon: Icon, trend, 
       iconColor: 'text-sky-400',
       valueBorder: 'border-sky-500/20',
     },
+    surface: {
+      iconBg: 'bg-surface-500/15',
+      iconColor: 'text-surface-400',
+      valueBorder: 'border-surface-500/20',
+    },
   }
 
-  const c = colorMap[color]
+  const c = colorMap[color] || colorMap.surface
 
   return (
     <div className="glass-card flex items-center gap-4 p-5">

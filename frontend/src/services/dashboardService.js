@@ -122,17 +122,24 @@ export const dashboardService = {
     // Calculate vibration magnitude sqrt(x^2 + y^2 + z^2)
     const vibrationMagnitude = vibData 
       ? Number(Math.sqrt(Math.pow(vibData.accel_x, 2) + Math.pow(vibData.accel_y, 2) + Math.pow(vibData.accel_z, 2)).toFixed(2))
-      : 0
+      : null
+
+    const now = Date.now()
+    const tempAge = tempData ? now - new Date(tempData.timestamp).getTime() : Infinity
+    const vibAge = vibData ? now - new Date(vibData.timestamp).getTime() : Infinity
+
+    const isTempFresh = tempAge < 5000 // 5 seconds
+    const isVibFresh = vibAge < 5000
 
     return {
-      temperature: tempData?.temperature || 0,
-      humidity: tempData?.humidity || 0,
-      vibration: vibrationMagnitude,
+      temperature: isTempFresh ? (tempData?.temperature || 0) : null,
+      humidity: isTempFresh ? (tempData?.humidity || 0) : null,
+      vibration: isVibFresh ? vibrationMagnitude : null,
       risk_level: tempData?.risk_level || vibData?.risk_level || 'low',
-      temp_risk_level: tempData?.risk_level || 'low',
-      vib_risk_level: vibData?.risk_level || 'low',
-      vibration_metadata: vibData?.metadata || {},
-      timestamp: tempData?.timestamp || vibData?.timestamp || null
+      temp_risk_level: isTempFresh ? (tempData?.risk_level || 'low') : 'offline',
+      vib_risk_level: isVibFresh ? (vibData?.risk_level || 'low') : 'offline',
+      vibration_metadata: isVibFresh ? (vibData?.metadata || {}) : {},
+      timestamp: (tempData?.timestamp || vibData?.timestamp) || null
     }
   },
 
@@ -219,8 +226,8 @@ export const dashboardService = {
         timestamp: t.timestamp,
         temperature: t.temperature,
         humidity: t.humidity,
-        vibration: vibrationMagnitude,
-        metadata: v ? (v.metadata || {}) : {}
+        vibration: null,
+        metadata: {}
       }
     })
 
@@ -241,6 +248,29 @@ export const dashboardService = {
     })
 
     const history = Object.values(historyMap).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+
+    // Forward fill missing data so lines don't stop early or get dropped during downsampling
+    // BUT limit the forward fill to 5 seconds. If gap is larger, leave it as null (sensor dead).
+    let lastTemp = null, lastTempTs = 0
+    let lastHum = null, lastHumTs = 0
+    let lastVib = null, lastVibTs = 0
+
+    history.forEach(h => {
+      const ts = new Date(h.timestamp).getTime()
+      
+      if (h.temperature !== null) { lastTemp = h.temperature; lastTempTs = ts }
+      else if (ts - lastTempTs < 5000) { h.temperature = lastTemp }
+      else { h.temperature = null }
+      
+      if (h.humidity !== null) { lastHum = h.humidity; lastHumTs = ts }
+      else if (ts - lastHumTs < 5000) { h.humidity = lastHum }
+      else { h.humidity = null }
+      
+      if (h.vibration !== null) { lastVib = h.vibration; lastVibTs = ts }
+      else if (ts - lastVibTs < 5000) { h.vibration = lastVib }
+      else { h.vibration = null }
+    })
+
     return history
   },
 

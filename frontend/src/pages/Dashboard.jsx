@@ -20,13 +20,14 @@ export default function Dashboard() {
   const [shelters, setShelters] = useState([])
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [chartHours, setChartHours] = useState(6)
+  const [chartHours, setChartHours] = useState(0.5)
   
   // Dashboard Data States
   const [latest, setLatest] = useState(null)
   const [thresholds, setThresholds] = useState(null)
   const [sensorData, setSensorData] = useState([])
   const [alertStats, setAlertStats] = useState({ total: 0, open: 0 })
+  const [now, setNow] = useState(Date.now())
 
 
   // Initial Fetch: Shelters
@@ -90,10 +91,9 @@ export default function Dashboard() {
       // Append latest reading to history without refetching everything
       if (latestReading && latestReading.timestamp) {
         setSensorData(prev => {
-          if (!prev || prev.length === 0) return prev
+          if (!prev) return [latestReading]
           
-          // Avoid duplicate timestamps
-          if (prev[prev.length - 1].timestamp === latestReading.timestamp) {
+          if (prev.length > 0 && prev[prev.length - 1].timestamp === latestReading.timestamp) {
             return prev
           }
           
@@ -119,7 +119,8 @@ export default function Dashboard() {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchRealtimeData()
-    }, 5000)
+      setNow(Date.now())
+    }, 1000)
     
     return () => clearInterval(interval)
   }, [fetchRealtimeData])
@@ -129,8 +130,8 @@ export default function Dashboard() {
     [shelters, selectedShelter]
   )
 
-  const tempRiskLevel = !latest || !thresholds ? 'low' : latest.temperature >= (thresholds.temp_critical || 40) ? 'high' : latest.temperature >= (thresholds.temp_warning || 35) ? 'medium' : 'low'
-  const humidRiskLevel = !latest || !thresholds ? 'low' : latest.humidity >= (thresholds.humidity_critical || 90) ? 'high' : latest.humidity >= (thresholds.humidity_warning || 80) ? 'medium' : 'low'
+  const tempRiskLevel = !latest ? 'low' : latest.temperature === null ? 'offline' : latest.temperature >= (thresholds?.temp_critical || 40) ? 'high' : latest.temperature >= (thresholds?.temp_warning || 35) ? 'medium' : 'low'
+  const humidRiskLevel = !latest ? 'low' : latest.humidity === null ? 'offline' : latest.humidity >= (thresholds?.humidity_critical || 90) ? 'high' : latest.humidity >= (thresholds?.humidity_warning || 80) ? 'medium' : 'low'
   const vibRiskLevel = latest?.vib_risk_level || 'low'
 
   if (loading && shelters.length === 0) {
@@ -182,21 +183,21 @@ export default function Dashboard() {
           value={tempRiskLevel.toUpperCase()}
           subtitle="Temperature Status"
           icon={Thermometer}
-          color={tempRiskLevel === 'high' ? 'danger' : tempRiskLevel === 'medium' ? 'warning' : 'success'}
+          color={tempRiskLevel === 'offline' ? 'surface' : tempRiskLevel === 'high' ? 'danger' : tempRiskLevel === 'medium' ? 'warning' : 'success'}
         />
         <StatusCard
           title="Humid. Risk Level"
           value={humidRiskLevel.toUpperCase()}
           subtitle="Humidity Status"
           icon={Droplets}
-          color={humidRiskLevel === 'high' ? 'danger' : humidRiskLevel === 'medium' ? 'warning' : 'success'}
+          color={humidRiskLevel === 'offline' ? 'surface' : humidRiskLevel === 'high' ? 'danger' : humidRiskLevel === 'medium' ? 'warning' : 'success'}
         />
         <StatusCard
           title="Vib. Risk Level"
           value={vibRiskLevel.toUpperCase()}
           subtitle="Structural Status"
           icon={Activity}
-          color={vibRiskLevel === 'high' ? 'danger' : vibRiskLevel === 'medium' ? 'warning' : 'success'}
+          color={vibRiskLevel === 'offline' ? 'surface' : vibRiskLevel === 'high' ? 'danger' : vibRiskLevel === 'medium' ? 'warning' : 'success'}
         />
       </div>
 
@@ -204,7 +205,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <GaugeCard
           label="Temperature"
-          value={latest?.temperature || 0}
+          value={latest?.temperature}
           unit="°C"
           min={15}
           max={50}
@@ -214,7 +215,7 @@ export default function Dashboard() {
         />
         <GaugeCard
           label="Humidity"
-          value={latest?.humidity || 0}
+          value={latest?.humidity}
           unit="%"
           min={20}
           max={100}
@@ -224,7 +225,7 @@ export default function Dashboard() {
         />
         <GaugeCard
           label="Vibration"
-          value={latest?.vibration || 0}
+          value={latest?.vibration}
           unit="g"
           min={0}
           max={4}
@@ -236,7 +237,7 @@ export default function Dashboard() {
 
       {/* Time Range Selector */}
       <div className="flex items-center justify-start gap-2">
-        {[3, 6, 12, 24].map((h) => (
+        {[0.5, 1, 3, 6, 12, 24].map((h) => (
           <button
             key={h}
             onClick={() => setChartHours(h)}
@@ -246,7 +247,7 @@ export default function Dashboard() {
                 : 'text-surface-500 hover:bg-surface-800/50 hover:text-surface-300'
             }`}
           >
-            {h}h
+            {h === 0.5 ? '30m' : `${h}h`}
           </button>
         ))}
       </div>
@@ -268,6 +269,7 @@ export default function Dashboard() {
                   sensorData={sensorData}
                   type="temperature"
                   hours={chartHours}
+                  now={now}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">
@@ -289,6 +291,7 @@ export default function Dashboard() {
                   sensorData={sensorData}
                   type="humidity"
                   hours={chartHours}
+                  now={now}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">
@@ -310,6 +313,7 @@ export default function Dashboard() {
                   sensorData={sensorData}
                   type="vibration"
                   hours={chartHours}
+                  now={now}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">

@@ -14,6 +14,7 @@ import {
 import { dashboardService } from '@/services/dashboardService'
 import { formatDateTime, timeAgo, getSeverityBadge, getStatusBadge } from '@/utils/helpers'
 import Pagination from '@/components/ui/Pagination'
+import Dropdown from '@/components/ui/Dropdown'
 
 const alertTypeIcons = {
   temp: Thermometer,
@@ -118,40 +119,43 @@ export default function Alerts() {
           </div>
 
           {/* Status */}
-          <select
+          <Dropdown
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="select w-auto min-w-[120px]"
-          >
-            <option value="all">All Status</option>
-            <option value="open">Open</option>
-            <option value="acknowledged">Acknowledged</option>
-            <option value="closed">Closed</option>
-          </select>
+            onChange={(val) => setStatusFilter(val)}
+            options={[
+              { label: 'All Status', value: 'all' },
+              { label: 'Open', value: 'open' },
+              { label: 'Acknowledged', value: 'acknowledged' },
+              { label: 'Closed', value: 'closed' },
+            ]}
+            className="w-36"
+          />
 
           {/* Type */}
-          <select
+          <Dropdown
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="select w-auto min-w-[140px]"
-          >
-            <option value="all">All Types</option>
-            <option value="temp">Temperature</option>
-            <option value="vibration">Vibration</option>
-            <option value="intrusion">Intrusion</option>
-            <option value="offline">Offline</option>
-          </select>
+            onChange={(val) => setTypeFilter(val)}
+            options={[
+              { label: 'All Types', value: 'all' },
+              { label: 'Temperature', value: 'temp' },
+              { label: 'Vibration', value: 'vibration' },
+              { label: 'Intrusion', value: 'intrusion' },
+              { label: 'Offline', value: 'offline' },
+            ]}
+            className="w-36"
+          />
 
           {/* Severity */}
-          <select
+          <Dropdown
             value={severityFilter}
-            onChange={(e) => setSeverityFilter(e.target.value)}
-            className="select w-auto min-w-[130px]"
-          >
-            <option value="all">All Severity</option>
-            <option value="warning">Warning</option>
-            <option value="critical">Critical</option>
-          </select>
+            onChange={(val) => setSeverityFilter(val)}
+            options={[
+              { label: 'All Severity', value: 'all' },
+              { label: 'Warning', value: 'warning' },
+              { label: 'Critical', value: 'critical' },
+            ]}
+            className="w-36"
+          />
         </div>
       </div>
 

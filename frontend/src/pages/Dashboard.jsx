@@ -15,6 +15,7 @@ import SensorChart from '@/components/dashboard/SensorChart'
 import CCTVFeed from '@/components/dashboard/CCTVFeed'
 import AIVibrationCard from '@/components/dashboard/AIVibrationCard'
 import { dashboardService } from '@/services/dashboardService'
+import Dropdown from '@/components/ui/Dropdown'
 
 export default function Dashboard() {
   const [shelters, setShelters] = useState([])
@@ -158,17 +159,12 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary-400" />
-          <select
+          <Dropdown
             value={selectedShelter || ''}
-            onChange={(e) => setSelectedShelter(e.target.value)}
-            className="select max-w-xs"
-          >
-            {shelters.map((s) => (
-              <option key={s.shelter_id} value={s.shelter_id}>
-                {s.shelter_name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedShelter(val)}
+            options={shelters.map(s => ({ label: s.shelter_name, value: s.shelter_id }))}
+            className="w-56"
+          />
         </div>
         {shelter && (
           <p className="text-xs text-surface-500">{shelter.location}</p>

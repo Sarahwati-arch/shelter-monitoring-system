@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Shield, Users, Sliders, Settings, MapPin, Plus, Loader2, AlertCircle, X, Trash2, AlertTriangle } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
 import Pagination from '@/components/ui/Pagination'
+import Dropdown from '@/components/ui/Dropdown'
 
 const tabs = [
   { id: 'shelters', label: 'Shelters', icon: MapPin },
@@ -720,14 +721,14 @@ function UsersTab() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-surface-400">Role</label>
-                <select
+                <Dropdown
                   value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className="input"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="technician">Technician</option>
-                </select>
+                  onChange={(val) => setForm({ ...form, role: val })}
+                  options={[
+                    { label: 'Admin', value: 'admin' },
+                    { label: 'Technician', value: 'technician' },
+                  ]}
+                />
               </div>
 
               <div className="flex gap-3 pt-2">

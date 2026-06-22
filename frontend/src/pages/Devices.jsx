@@ -4,6 +4,7 @@ import { timeAgo, getDeviceStatusColor } from '@/utils/helpers'
 import { Cpu, Wifi, WifiOff, Camera, Activity, Plus, Loader2, ShieldOff, Thermometer, X, Trash2, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import Pagination from '@/components/ui/Pagination'
+import Dropdown from '@/components/ui/Dropdown'
 
 const deviceTypeIcons = {
   temperature: Thermometer,
@@ -204,18 +205,15 @@ export default function Devices() {
             {filteredDevices.length} devices registered
           </p>
           {/* Shelter Filter */}
-          <select
+          <Dropdown
             value={selectedShelter || ''}
-            onChange={(e) => setSelectedShelter(e.target.value || null)}
-            className="rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-1.5 text-xs text-surface-300 outline-none focus:border-primary-500"
-          >
-            <option value="">All Shelters</option>
-            {shelters.map((s) => (
-              <option key={s.shelter_id} value={s.shelter_id}>
-                {s.shelter_name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedShelter(val || null)}
+            options={[
+              { label: 'All Shelters', value: '' },
+              ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
+            ]}
+            className="w-48"
+          />
         </div>
         {isAdmin && (
           <button
@@ -368,31 +366,26 @@ export default function Devices() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-surface-400">Device Type</label>
-                <select
+                <Dropdown
                   value={form.device_type}
-                  onChange={(e) => setForm({ ...form, device_type: e.target.value })}
-                  className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
-                >
-                  <option value="temperature">Temperature</option>
-                  <option value="vibration">Vibration</option>
-                  <option value="camera">Camera</option>
-                </select>
+                  onChange={(val) => setForm({ ...form, device_type: val })}
+                  options={[
+                    { label: 'Temperature', value: 'temperature' },
+                    { label: 'Vibration', value: 'vibration' },
+                    { label: 'Camera', value: 'camera' },
+                  ]}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-surface-400">Shelter</label>
-                <select
+                <Dropdown
                   value={form.shelter_id}
-                  onChange={(e) => setForm({ ...form, shelter_id: e.target.value })}
-                  required
-                  className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
-                >
-                  <option value="">Select shelter...</option>
-                  {shelters.map((s) => (
-                    <option key={s.shelter_id} value={s.shelter_id}>
-                      {s.shelter_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setForm({ ...form, shelter_id: val })}
+                  options={[
+                    { label: 'Select shelter...', value: '' },
+                    ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
+                  ]}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-surface-400">Token</label>
@@ -603,19 +596,14 @@ export default function Devices() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-surface-400">Shelter</label>
-                <select
+                <Dropdown
                   value={form.shelter_id}
-                  onChange={(e) => setForm({ ...form, shelter_id: e.target.value })}
-                  required
-                  className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
-                >
-                  <option value="">Select shelter...</option>
-                  {shelters.map((s) => (
-                    <option key={s.shelter_id} value={s.shelter_id}>
-                      {s.shelter_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setForm({ ...form, shelter_id: val })}
+                  options={[
+                    { label: 'Select shelter...', value: '' },
+                    ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
+                  ]}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-surface-400">Device Type</label>

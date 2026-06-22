@@ -3,6 +3,7 @@ import { Camera, ImageOff, Filter, Loader2 } from 'lucide-react'
 import { formatDateTime, timeAgo } from '@/utils/helpers'
 import { dashboardService } from '@/services/dashboardService'
 import Pagination from '@/components/ui/Pagination'
+import Dropdown from '@/components/ui/Dropdown'
 
 const alertTypeColors = {
   intrusion: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -75,18 +76,15 @@ export default function Evidence() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-surface-500" />
-          <select
+          <Dropdown
             value={selectedShelter}
-            onChange={(e) => setSelectedShelter(e.target.value)}
-            className="select w-auto min-w-[200px]"
-          >
-            <option value="all">All Shelters</option>
-            {shelters.map((s) => (
-              <option key={s.shelter_id} value={s.shelter_id}>
-                {s.shelter_name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedShelter(val)}
+            options={[
+              { label: 'All Shelters', value: 'all' },
+              ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
+            ]}
+            className="w-48"
+          />
         </div>
         <p className="text-xs text-surface-500">
           {evidence.length} evidence captures found

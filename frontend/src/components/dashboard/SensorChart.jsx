@@ -13,11 +13,11 @@ import { Line } from 'react-chartjs-2'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
 
-export default function SensorChart({ sensorData, type = 'temperature', hours = 6 }) {
+export default function SensorChart({ sensorData, type = 'temperature', hours = 6, now }) {
   const chartData = useMemo(() => {
     if (!sensorData || sensorData.length === 0) return null
 
-    const cutoff = Date.now() - hours * 60 * 60 * 1000
+    const cutoff = (now || Date.now()) - hours * 60 * 60 * 1000
     const filtered = sensorData.filter((d) => new Date(d.timestamp).getTime() > cutoff)
 
     // Sample every Nth point for performance
@@ -76,7 +76,7 @@ export default function SensorChart({ sensorData, type = 'temperature', hours = 
         },
       ],
     }
-  }, [sensorData, type, hours])
+  }, [sensorData, type, hours, now])
 
   const options = useMemo(
     () => ({

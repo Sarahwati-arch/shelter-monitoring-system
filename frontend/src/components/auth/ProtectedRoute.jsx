@@ -4,7 +4,10 @@ import { useAuthStore } from '@/stores/authStore'
 export default function ProtectedRoute() {
   const { user, profile, loading, initialized } = useAuthStore()
 
-  if (!initialized || loading) {
+  // Only block rendering during the very first session check.
+  // Do NOT use `loading` here — background token refreshes set loading=true
+  // momentarily and would cause a fullscreen spinner on every navigation.
+  if (!initialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-950">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />

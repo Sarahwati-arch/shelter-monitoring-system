@@ -5,20 +5,15 @@ const TIMEOUT_MS = 10000 // 10 seconds
 const withTimeout = (promise) => {
   return Promise.race([
     promise,
-    new Promise((_, reject) => 
+    new Promise((_, reject) =>
       setTimeout(() => reject(new Error('SUPABASE_TIMEOUT')), TIMEOUT_MS)
     )
   ]).catch(error => {
     if (error.message === 'SUPABASE_TIMEOUT') {
-      const lastReload = sessionStorage.getItem('last_auto_reload')
-      const now = Date.now()
-      // Only auto-reload once per minute to avoid infinite reload loops
-      if (!lastReload || now - parseInt(lastReload, 10) > 60000) {
-        sessionStorage.setItem('last_auto_reload', now.toString())
-        window.location.reload()
-      } else {
-        throw new Error('Network timeout. Please check your connection.')
-      }
+      // Do NOT reload the page — a full reload wipes all React state and causes
+      // the fullscreen loading spinner to re-appear on every network hiccup.
+      // Instead, surface the error to the calling component.
+      throw new Error('Network timeout. Please check your connection.')
     }
     throw error
   })

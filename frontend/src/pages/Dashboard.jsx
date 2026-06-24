@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [loading, setLoading] = useState(true)
   const [chartHours, setChartHours] = useState(6)
+  const [now, setNow] = useState(Date.now())
 
   // Dashboard Data States
   const [latest, setLatest] = useState(null)
@@ -127,14 +128,20 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [fetchRealtimeData])
 
-  const shelter = useMemo(() =>
+  const shelter = useMemo(() => 
     shelters.find((s) => s.shelter_id === selectedShelter),
     [shelters, selectedShelter]
   )
 
-  const tempRiskLevel = !latest || !thresholds ? 'low' : latest.temperature >= (thresholds.temp_critical || 40) ? 'high' : latest.temperature >= (thresholds.temp_warning || 35) ? 'medium' : 'low'
-  const humidRiskLevel = !latest || !thresholds ? 'low' : latest.humidity >= (thresholds.humidity_critical || 90) ? 'high' : latest.humidity >= (thresholds.humidity_warning || 80) ? 'medium' : 'low'
-  const vibRiskLevel = latest?.vib_risk_level || 'low'
+  // Consider device offline if the latest data is older than 5 seconds
+  // (MQTT sends data every 5s, so if we miss even one interval, it's marked offline)
+  const isOffline = latest?.timestamp 
+    ? (Date.now() - new Date(latest.timestamp).getTime() > 5000) 
+    : true
+
+  const tempRiskLevel = isOffline ? 'offline' : (!latest || !thresholds) ? 'low' : latest.temperature >= (thresholds.temp_critical || 40) ? 'high' : latest.temperature >= (thresholds.temp_warning || 35) ? 'medium' : 'low'
+  const humidRiskLevel = isOffline ? 'offline' : (!latest || !thresholds) ? 'low' : latest.humidity >= (thresholds.humidity_critical || 90) ? 'high' : latest.humidity >= (thresholds.humidity_warning || 80) ? 'medium' : 'low'
+  const vibRiskLevel = isOffline ? 'offline' : (latest?.vib_risk_level || 'low')
 
   if (loading && shelters.length === 0) {
     return (
@@ -214,6 +221,7 @@ export default function Dashboard() {
           warningThreshold={thresholds?.temp_warning || 35}
           criticalThreshold={thresholds?.temp_critical || 40}
           icon={Thermometer}
+          isOffline={isOffline}
         />
         <GaugeCard
           label="Humidity"
@@ -224,6 +232,7 @@ export default function Dashboard() {
           warningThreshold={thresholds?.humidity_warning || 80}
           criticalThreshold={thresholds?.humidity_critical || 90}
           icon={Droplets}
+          isOffline={isOffline}
         />
         <GaugeCard
           label="Vibration"
@@ -234,6 +243,7 @@ export default function Dashboard() {
           warningThreshold={thresholds?.vibration_warning || 10.0}
           criticalThreshold={thresholds?.vibration_critical || 20.0}
           icon={Activity}
+          isOffline={isOffline}
         />
       </div>
 
@@ -270,6 +280,7 @@ export default function Dashboard() {
                   sensorData={sensorData}
                   type="temperature"
                   hours={chartHours}
+                  now={now}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">
@@ -291,6 +302,7 @@ export default function Dashboard() {
                   sensorData={sensorData}
                   type="humidity"
                   hours={chartHours}
+                  now={now}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">
@@ -312,6 +324,7 @@ export default function Dashboard() {
                   sensorData={sensorData}
                   type="vibration"
                   hours={chartHours}
+                  now={now}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">

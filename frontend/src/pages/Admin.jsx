@@ -350,7 +350,8 @@ function ThresholdsTab() {
       const updates = {
         temp_warning: parseFloat(editForm.temp_warning),
         temp_critical: parseFloat(editForm.temp_critical),
-        vibration_limit: parseFloat(editForm.vibration_limit),
+        vibration_warning: parseFloat(editForm.vibration_warning),
+        vibration_critical: parseFloat(editForm.vibration_critical),
         humidity_warning: parseFloat(editForm.humidity_warning),
         humidity_critical: parseFloat(editForm.humidity_critical)
       }
@@ -415,7 +416,7 @@ function ThresholdsTab() {
           <div key={shelter.shelter_id} className="glass-card p-5">
             <h3 className="mb-3 text-sm font-semibold text-surface-200">{shelter.shelter_name}</h3>
             {t ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-surface-500">Temp Warning</p>
                   <p className="text-lg font-bold text-amber-400">{t.temp_warning}°C</p>
@@ -425,8 +426,12 @@ function ThresholdsTab() {
                   <p className="text-lg font-bold text-red-400">{t.temp_critical}°C</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Vibration Limit</p>
-                  <p className="text-lg font-bold text-amber-400">{t.vibration_limit}g</p>
+                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Warning</p>
+                  <p className="text-lg font-bold text-amber-400">{t.vibration_warning}g</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Critical</p>
+                  <p className="text-lg font-bold text-red-400">{t.vibration_critical}g</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Warning</p>
@@ -446,7 +451,8 @@ function ThresholdsTab() {
                 setEditForm({
                   temp_warning: t?.temp_warning || 35.0,
                   temp_critical: t?.temp_critical || 40.0,
-                  vibration_limit: t?.vibration_limit || 2.0,
+                  vibration_warning: t?.vibration_warning || 10.0,
+                  vibration_critical: t?.vibration_critical || 20.0,
                   humidity_warning: t?.humidity_warning || 80.0,
                   humidity_critical: t?.humidity_critical || 90.0,
                 })
@@ -522,12 +528,21 @@ function ThresholdsTab() {
                     className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
                   />
                 </div>
-                <div className="col-span-2">
-                  <label className="mb-1 block text-xs text-surface-400">Vibration Limit (g)</label>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Vib. Warning (g)</label>
                   <input
                     type="number" step="any" required
-                    value={editForm.vibration_limit}
-                    onChange={(e) => setEditForm({ ...editForm, vibration_limit: e.target.value })}
+                    value={editForm.vibration_warning}
+                    onChange={(e) => setEditForm({ ...editForm, vibration_warning: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Vib. Critical (g)</label>
+                  <input
+                    type="number" step="any" required
+                    value={editForm.vibration_critical}
+                    onChange={(e) => setEditForm({ ...editForm, vibration_critical: e.target.value })}
                     className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
                   />
                 </div>

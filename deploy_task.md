@@ -23,23 +23,23 @@
 > Pastikan semua syarat ini terpenuhi sebelum mulai deploy.
 
 ### 0.1 Verifikasi Git & GitHub
-- [ ] Repo sudah ada di GitHub (remote `origin` sudah di-set)
-- [ ] `git status` bersih — tidak ada file penting yang belum di-commit
-- [ ] Cek `.gitignore` tidak memblokir file-file kritis berikut:
-  - [ ] `vibration_ai/models/vibration_classifier.pkl` → **HARUS ada di Git**
-  - [ ] `vibration_ai/models/scaler.pkl` → **HARUS ada di Git**
-  - [ ] `bridge/Procfile` → akan dibuat, pastikan tidak di-ignore
-  - [ ] `frontend/vercel.json` → akan dibuat, pastikan tidak di-ignore
+- [x] Repo sudah ada di GitHub (remote `origin` sudah di-set)
+- [ ] `git status` bersih — tidak ada file penting yang belum di-commit *(pending commit file-file baru)*
+- [x] Cek `.gitignore` tidak memblokir file-file kritis berikut:
+  - [x] `vibration_ai/models/vibration_classifier.pkl` → **HARUS ada di Git**
+  - [x] `vibration_ai/models/scaler.pkl` → **HARUS ada di Git**
+  - [x] `bridge/Procfile` → dibuat, tidak di-ignore
+  - [x] `frontend/vercel.json` → dibuat, tidak di-ignore
 
 ### 0.2 Verifikasi AI Model Files
-- [ ] File `vibration_ai/models/vibration_classifier.pkl` sudah ada
-- [ ] File `vibration_ai/models/scaler.pkl` sudah ada
-- [ ] Kedua file sudah di-track oleh Git (jalankan: `git ls-files vibration_ai/models/`)
-- [ ] Jika belum di-track: `git add vibration_ai/models/*.pkl && git commit -m "chore: add AI model files" && git push`
+- [x] File `vibration_ai/models/vibration_classifier.pkl` sudah ada
+- [x] File `vibration_ai/models/scaler.pkl` sudah ada
+- [x] Kedua file sudah di-track oleh Git (jalankan: `git ls-files vibration_ai/models/`)
+- [x] Jika belum di-track: sudah di-track, tidak perlu action
 
 ### 0.3 Verifikasi .env Tidak Ter-commit
-- [ ] `frontend/.env` ada di `.gitignore` → tidak boleh masuk ke GitHub
-- [ ] `bridge/.env` ada di `.gitignore` → tidak boleh masuk ke GitHub
+- [x] `frontend/.env` ada di `.gitignore` → tidak boleh masuk ke GitHub
+- [x] `bridge/.env` ada di `.gitignore` → tidak boleh masuk ke GitHub
 - [ ] Catat semua nilai env vars dari kedua file `.env` di tempat aman (password manager / notes private)
 
 ### 0.4 Kumpulkan Semua Credentials
@@ -60,7 +60,7 @@ Siapkan nilai berikut sebelum mulai deploy:
 - [ ] `CHAT_ID` = (dari `bridge/.env`)
 
 ### 0.5 Build Test Lokal (Frontend)
-- [ ] Jalankan `cd frontend && npm run build` — pastikan tidak ada error
+- [x] Jalankan `cd frontend && npm run build` — ✅ sukses, `built in 2.17s`, tidak ada error
 - [ ] Preview build: `npm run preview` — buka `localhost:4173`, pastikan tampil normal
 
 ---
@@ -68,7 +68,7 @@ Siapkan nilai berikut sebelum mulai deploy:
 ## Fase 1: Frontend → Vercel
 
 ### 1.1 Buat File Konfigurasi Vercel
-- [ ] Buat file `frontend/vercel.json` dengan isi:
+- [x] Buat file `frontend/vercel.json` dengan isi:
   ```json
   {
     "rewrites": [
@@ -117,11 +117,11 @@ Siapkan nilai berikut sebelum mulai deploy:
 ## Fase 2: Bridge (MQTT→Supabase) → Railway
 
 ### 2.1 Buat File Konfigurasi Railway
-- [ ] Buat file `bridge/Procfile` dengan isi:
+- [x] Buat file `bridge/Procfile` dengan isi:
   ```
   worker: python mqtt_to_supabase.py
   ```
-- [ ] Buat file `bridge/runtime.txt` dengan isi:
+- [x] Buat file `bridge/runtime.txt` dengan isi:
   ```
   python-3.11.9
   ```
@@ -133,7 +133,7 @@ Siapkan nilai berikut sebelum mulai deploy:
   ```
 
 ### 2.2 Verifikasi `bridge/requirements.txt`
-- [ ] Pastikan file `bridge/requirements.txt` sudah include semua dependency:
+- [x] Pastikan file `bridge/requirements.txt` sudah include semua dependency:
   ```
   paho-mqtt==2.1.0
   supabase==2.13.0
@@ -145,7 +145,7 @@ Siapkan nilai berikut sebelum mulai deploy:
   requests
   scipy
   ```
-- [ ] Jika belum ada `scipy`, tambahkan → commit & push
+- [x] `scipy` ditambahkan ke `bridge/requirements.txt`
 
 ### 2.3 Deploy ke Railway
 - [ ] Buka [railway.app](https://railway.app) → Login (bisa pakai GitHub)
@@ -183,7 +183,7 @@ Siapkan nilai berikut sebelum mulai deploy:
 ## Fase 3: Face Recognition → Local Service
 
 ### 3.1 Buat File Requirements Face Recognition
-- [ ] Buat file `face_recognition/requirements.txt` dengan isi:
+- [x] Buat file `face_recognition/requirements.txt` dengan isi:
   ```
   torch>=2.2.0
   torchvision>=0.17.0
@@ -196,7 +196,7 @@ Siapkan nilai berikut sebelum mulai deploy:
   ```
 
 ### 3.2 Buat Startup Scripts
-- [ ] Buat `face_recognition/start.bat` (untuk Windows):
+- [x] Buat `face_recognition/start.bat` (untuk Windows):
   ```bat
   @echo off
   cd /d %~dp0
@@ -212,7 +212,7 @@ Siapkan nilai berikut sebelum mulai deploy:
   python src/stage1/webcam_test.py --recognize --cam-index 0
   pause
   ```
-- [ ] Buat `face_recognition/start.sh` (untuk Linux / Raspberry Pi):
+- [x] Buat `face_recognition/start.sh` (untuk Linux / Raspberry Pi):
   ```bash
   #!/bin/bash
   cd "$(dirname "$0")"

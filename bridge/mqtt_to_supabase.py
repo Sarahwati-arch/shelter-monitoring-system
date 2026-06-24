@@ -33,8 +33,7 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID_FALLBACK = os.getenv("CHAT_ID")  # fallback jika DB tidak tersedia
 
-# Vibration threshold for risk level (g-force magnitude)
-VIBRATION_WARNING = 1.0  # matches thresholds table
+# Vibration thresholds are now dynamically loaded from DB
 
 # ---------------------------------------------------------------------------
 # AI Model Initialization
@@ -186,12 +185,16 @@ def send_telegram(message: str) -> None:
             print(f"[TG ERROR] chat_id={chat_id}: {e}")
 
 
-def calc_risk_level(accel_x: float, accel_y: float, accel_z: float) -> str:
-    """Calculate risk level based on acceleration magnitude."""
+def calc_risk_level(accel_x: float, accel_y: float, accel_z: float, shelter_id: str) -> str:
+    """Calculate risk level based on acceleration magnitude and thresholds."""
     magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
-    if magnitude >= VIBRATION_WARNING:
-        return "high"
-    elif magnitude >= VIBRATION_WARNING * 0.6:
+    thresholds = load_thresholds(shelter_id)
+    vib_critical = thresholds.get("vibration_critical", 20.0)
+    vib_warning = thresholds.get("vibration_warning", 10.0)
+    
+    if magnitude >= vib_critical:
+        return "critical"
+    elif magnitude >= vib_warning:
         return "medium"
     return "low"
 
@@ -369,7 +372,7 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     gyro_y = data.get("gyro_y", 0.0)
     gyro_z = data.get("gyro_z", 0.0)
 
-    conventional_risk = calc_risk_level(accel_x, accel_y, accel_z)
+    conventional_risk = calc_risk_level(accel_x, accel_y, accel_z, shelter_id)
     final_risk = conventional_risk
     
     # Use the last known AI metadata for this device as the base
@@ -438,11 +441,14 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     except Exception:
         pass
 
-    # Generate alert if high or critical risk
-    if final_risk in ["high", "critical"]:
+    # Generate alert if medium, high or critical risk
+    if final_risk in ["medium", "high", "critical"]:
         magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
         thresholds = load_thresholds(shelter_id)
-        vib_limit = thresholds.get("vibration_limit", 2.0)
+        
+        is_critical = final_risk in ["high", "critical"]
+        severity = "critical" if is_critical else "warning"
+        vib_limit = thresholds.get("vibration_critical" if is_critical else "vibration_warning", 20.0)
         
         ai_label = metadata.get("ai_label", "Unknown")
         ai_conf = metadata.get("ai_confidence", 0.0)
@@ -453,7 +459,7 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
             ai_info = ""
         
         msg = (
-            f"Vibration {final_risk}: magnitude {magnitude:.2f} g "
+            f"Vibration {severity}: magnitude {magnitude:.2f} g "
             f"(limit: {vib_limit:.1f} g){ai_info}"
         )
 
@@ -462,13 +468,14 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
             "vibration_data_id": vibration_data_id,
             "alert_type": "vibration",
             "status": "open",
-            "severity": "critical",
+            "severity": severity,
             "message": msg,
         }
         supabase.table("alerts").insert(alert).execute()
-        print(f"  -> ALERT created: vibration critical!")
+        print(f"  -> ALERT created: vibration {severity}!")
         
-        send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
+        if is_critical:
+            send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 # ---------------------------------------------------------------------------

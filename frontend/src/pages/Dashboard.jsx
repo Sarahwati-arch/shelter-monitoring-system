@@ -121,7 +121,7 @@ export default function Dashboard() {
     const interval = setInterval(() => {
       fetchRealtimeData()
       setNow(Date.now())
-    }, 1000)
+    }, 3000)
     
     return () => clearInterval(interval)
   }, [fetchRealtimeData])
@@ -224,9 +224,9 @@ export default function Dashboard() {
           value={latest?.vibration}
           unit="g"
           min={0}
-          max={4}
-          warningThreshold={(thresholds?.vibration_limit || 2.0) * 0.75}
-          criticalThreshold={thresholds?.vibration_limit || 2.0}
+          max={Math.max(4, Math.ceil((thresholds?.vibration_critical || 20.0) * 1.5))}
+          warningThreshold={thresholds?.vibration_warning || 10.0}
+          criticalThreshold={thresholds?.vibration_critical || 20.0}
           icon={Activity}
         />
       </div>

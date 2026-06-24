@@ -10,15 +10,8 @@ const withTimeout = (promise) => {
     )
   ]).catch(error => {
     if (error.message === 'SUPABASE_TIMEOUT') {
-      const lastReload = sessionStorage.getItem('last_auto_reload')
-      const now = Date.now()
-      // Only auto-reload once per minute to avoid infinite reload loops
-      if (!lastReload || now - parseInt(lastReload, 10) > 60000) {
-        sessionStorage.setItem('last_auto_reload', now.toString())
-        window.location.reload()
-      } else {
-        throw new Error('Network timeout. Please check your connection.')
-      }
+      // Don't reload the page — let the caller handle the error gracefully
+      throw new Error('Network timeout. Please check your connection.')
     }
     throw error
   })

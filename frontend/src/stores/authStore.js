@@ -6,6 +6,7 @@ export const useAuthStore = create((set, get) => ({
   profile: null,
   loading: true,
   initialized: false,
+  _authSubscription: null,
 
   setLoading: (loading) => set({ loading }),
   
@@ -27,6 +28,9 @@ export const useAuthStore = create((set, get) => ({
   },
 
   initialize: async () => {
+    // Guard: prevent double-initialization from React StrictMode or multiple callers
+    if (get().initialized) return
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -46,8 +50,11 @@ export const useAuthStore = create((set, get) => ({
       set({ loading: false, initialized: true })
     }
 
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth changes — save subscription so we can clean up later
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip INITIAL_SESSION: already handled via getSession() above
+      if (event === 'INITIAL_SESSION') return
+
       if (session) {
         set({ user: session.user })
         const { data: profile } = await supabase
@@ -61,6 +68,16 @@ export const useAuthStore = create((set, get) => ({
       }
       set({ loading: false })
     })
+
+    set({ _authSubscription: subscription })
+  },
+
+  cleanup: () => {
+    const { _authSubscription } = get()
+    if (_authSubscription) {
+      _authSubscription.unsubscribe()
+      set({ _authSubscription: null })
+    }
   },
 
   updateProfile: async (updates) => {
@@ -82,3 +99,4 @@ export const useAuthStore = create((set, get) => ({
     set({ user: null, profile: null })
   }
 }))
+

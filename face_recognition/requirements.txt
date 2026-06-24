@@ -1,0 +1,8 @@
+torch>=2.2.0
+torchvision>=0.17.0
+opencv-python>=4.9.0
+deepface>=0.0.92
+mtcnn>=0.1.1
+facenet-pytorch>=2.5.3
+numpy>=1.26.0
+Pillow>=10.2.0

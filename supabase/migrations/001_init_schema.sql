@@ -55,7 +55,8 @@ CREATE TABLE thresholds (
     shelter_id UUID UNIQUE REFERENCES shelters(shelter_id) ON DELETE CASCADE,
     temp_warning FLOAT DEFAULT 35.0,
     temp_critical FLOAT DEFAULT 40.0,
-    vibration_limit FLOAT DEFAULT 2.0,
+    vibration_warning FLOAT DEFAULT 10.0,
+    vibration_critical FLOAT DEFAULT 20.0,
     humidity_warning FLOAT DEFAULT 80.0,
     humidity_critical FLOAT DEFAULT 90.0,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

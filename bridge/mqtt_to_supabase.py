@@ -33,8 +33,9 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID_FALLBACK = os.getenv("CHAT_ID")  # fallback jika DB tidak tersedia
 
-# Vibration threshold for risk level (g-force magnitude)
-VIBRATION_WARNING = 1.0  # matches thresholds table
+# Vibration thresholds matching ESP32 firmware
+VIBRATION_THRESH_LOW = 10.0
+VIBRATION_THRESH_HIGH = 20.0
 
 # ---------------------------------------------------------------------------
 # AI Model Initialization
@@ -56,7 +57,7 @@ else:
     print("WARN: AI Model or Scaler not found. AI features disabled.")
 
 CLASS_NAMES = {0: "Normal/AC", 1: "Footsteps", 2: "Sabotage/Maintenance", 3: "Vehicle", 4: "Earthquake"}
-CLASS_RISK_MAP = {0: "low", 1: "low", 2: "high", 3: "medium", 4: "critical"}
+CLASS_RISK_MAP = {0: "low", 1: "low", 2: "high", 3: "medium", 4: "high"}
 _ai_buffers: dict = {}
 _last_ai_metadata: dict = {}
 
@@ -186,12 +187,15 @@ def send_telegram(message: str) -> None:
             print(f"[TG ERROR] chat_id={chat_id}: {e}")
 
 
-def calc_risk_level(accel_x: float, accel_y: float, accel_z: float) -> str:
-    """Calculate risk level based on acceleration magnitude."""
-    magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
-    if magnitude >= VIBRATION_WARNING:
+def calc_risk_level(accel_x: float, accel_y: float, accel_z: float, gyro_x: float, gyro_y: float, gyro_z: float, vib_warning: float = 10.0, vib_critical: float = 20.0) -> str:
+    """Calculate risk level based on combined magnitude."""
+    accel_mag = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+    gyro_mag = math.sqrt(gyro_x**2 + gyro_y**2 + gyro_z**2)
+    vib_level = (accel_mag + gyro_mag) / 2.0
+    
+    if vib_level >= vib_critical:
         return "high"
-    elif magnitude >= VIBRATION_WARNING * 0.6:
+    elif vib_level >= vib_warning:
         return "medium"
     return "low"
 
@@ -369,7 +373,11 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     gyro_y = data.get("gyro_y", 0.0)
     gyro_z = data.get("gyro_z", 0.0)
 
-    conventional_risk = calc_risk_level(accel_x, accel_y, accel_z)
+    thresholds = load_thresholds(shelter_id)
+    vib_warning = thresholds.get("vibration_warning", VIBRATION_THRESH_LOW)
+    vib_critical = thresholds.get("vibration_critical", VIBRATION_THRESH_HIGH)
+    
+    conventional_risk = calc_risk_level(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, vib_warning, vib_critical)
     final_risk = conventional_risk
     
     # Use the last known AI metadata for this device as the base
@@ -440,9 +448,13 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
 
     # Generate alert if high or critical risk
     if final_risk in ["high", "critical"]:
-        magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+        accel_mag = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+        gyro_mag = math.sqrt(gyro_x**2 + gyro_y**2 + gyro_z**2)
+        vib_level = (accel_mag + gyro_mag) / 2.0
+        
         thresholds = load_thresholds(shelter_id)
-        vib_limit = thresholds.get("vibration_limit", 2.0)
+        vib_warning = thresholds.get("vibration_warning", VIBRATION_THRESH_LOW)
+        vib_critical = thresholds.get("vibration_critical", VIBRATION_THRESH_HIGH)
         
         ai_label = metadata.get("ai_label", "Unknown")
         ai_conf = metadata.get("ai_confidence", 0.0)
@@ -452,9 +464,12 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
         else:
             ai_info = ""
         
+        is_high = final_risk == "high" or final_risk == "critical"
+        limit_used = vib_critical if is_high else vib_warning
+        
         msg = (
-            f"Vibration {final_risk}: magnitude {magnitude:.2f} g "
-            f"(limit: {vib_limit:.1f} g){ai_info}"
+            f"Vibration {final_risk}: level {vib_level:.2f} "
+            f"(limit: {limit_used:.1f}){ai_info}"
         )
 
         alert = {

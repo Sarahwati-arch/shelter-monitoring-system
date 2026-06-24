@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [loading, setLoading] = useState(true)
   const [chartHours, setChartHours] = useState(6)
-  
+
   // Dashboard Data States
   const [latest, setLatest] = useState(null)
   const [thresholds, setThresholds] = useState(null)
@@ -91,15 +91,15 @@ export default function Dashboard() {
       if (latestReading && latestReading.timestamp) {
         setSensorData(prev => {
           if (!prev || prev.length === 0) return prev
-          
+
           // Avoid duplicate timestamps
           if (prev[prev.length - 1].timestamp === latestReading.timestamp) {
             return prev
           }
-          
+
           const newData = [...prev, latestReading]
           const cutoff = Date.now() - (chartHours * 60 * 60 * 1000)
-          
+
           // Keep only data within the selected hours
           return newData.filter(d => new Date(d.timestamp).getTime() > cutoff)
         })
@@ -116,15 +116,18 @@ export default function Dashboard() {
   }, [fetchInitialData, fetchRealtimeData])
 
   // Auto-refresh interval for realtime data
+  // 3s is plenty for a monitoring dashboard and reduces Supabase request rate
+  // from 3600/hr to 1200/hr — significantly lowering timeout probability.
   useEffect(() => {
     const interval = setInterval(() => {
       fetchRealtimeData()
-    }, 5000)
-    
+      setNow(Date.now())
+    }, 3000)
+
     return () => clearInterval(interval)
   }, [fetchRealtimeData])
 
-  const shelter = useMemo(() => 
+  const shelter = useMemo(() =>
     shelters.find((s) => s.shelter_id === selectedShelter),
     [shelters, selectedShelter]
   )
@@ -228,8 +231,8 @@ export default function Dashboard() {
           unit="g"
           min={0}
           max={4}
-          warningThreshold={(thresholds?.vibration_limit || 2.0) * 0.75}
-          criticalThreshold={thresholds?.vibration_limit || 2.0}
+          warningThreshold={thresholds?.vibration_warning || 10.0}
+          criticalThreshold={thresholds?.vibration_critical || 20.0}
           icon={Activity}
         />
       </div>
@@ -240,11 +243,10 @@ export default function Dashboard() {
           <button
             key={h}
             onClick={() => setChartHours(h)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-              chartHours === h
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${chartHours === h
                 ? 'bg-primary-500/20 text-primary-400'
                 : 'text-surface-500 hover:bg-surface-800/50 hover:text-surface-300'
-            }`}
+              }`}
           >
             {h}h
           </button>
@@ -326,9 +328,9 @@ export default function Dashboard() {
 
           {/* AI Diagnostics Card */}
           <div className="flex-none">
-            <AIVibrationCard 
-              latestMetadata={latest?.vibration_metadata} 
-              sensorData={sensorData} 
+            <AIVibrationCard
+              latestMetadata={latest?.vibration_metadata}
+              sensorData={sensorData}
             />
           </div>
 

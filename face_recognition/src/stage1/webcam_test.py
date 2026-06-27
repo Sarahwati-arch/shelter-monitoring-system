@@ -143,8 +143,25 @@ def process_frame(frame_bgr: np.ndarray,
         result dict with alert_flag, faces list, timestamp
     """
     image_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-    raw       = detector.detect_faces(image_rgb)
-    valid     = [d for d in raw if d["confidence"] >= threshold]
+    
+    H_orig, W_orig = image_rgb.shape[:2]
+    image_resized = cv2.resize(image_rgb, (640, 480))
+    scale_x = W_orig / 640.0
+    scale_y = H_orig / 480.0
+
+    raw = detector.detect_faces(image_resized)
+    
+    valid = []
+    for d in raw:
+        if d["confidence"] >= threshold:
+            x, y, w, h = d["box"]
+            d["box"] = [int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)]
+            
+            for key, pt in d["keypoints"].items():
+                px, py = pt
+                d["keypoints"][key] = (int(px * scale_x), int(py * scale_y))
+            
+            valid.append(d)
 
     alert_flag = len(valid) == 0
     alert_type = "no_face_detected" if alert_flag else None
@@ -286,9 +303,6 @@ def run(cam_index: int = 0,
 
     t_start = datetime.now()
 
-    # Add before the loop in run():
-    RECOGNIZE_EVERY_N = 5   # run recognition once every 5 frames
-
     while True:
         if not paused:
             ret, frame_bgr = cap.read()
@@ -298,16 +312,14 @@ def run(cam_index: int = 0,
             
             frame_bgr = cv2.flip(frame_bgr, 1)   # 1 = horizontal flip
 
-            # In the loop, replace the process_frame call:
             frame_count += 1
             elapsed = (datetime.now() - t_start).total_seconds()
             fps     = frame_count / elapsed if elapsed > 0 else 0.0
 
-            run_recognition = (frame_count % RECOGNIZE_EVERY_N == 0)
             annotated, result = process_frame(
                 frame_bgr, threshold,
-                recognizer if run_recognition else None,
-                last_result.get("faces") if not run_recognition else None
+                recognizer,
+                None
             )
             last_result = result
 

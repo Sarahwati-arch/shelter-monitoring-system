@@ -323,7 +323,9 @@ def run(cam_index: int = 0,
             )
             last_result = result
 
-            if result["alert_flag"]:
+            # Hanya tambahkan ke log/simpan data jika ada orang 'unknown' (menghindari spam ruangan kosong)
+            has_unknown = any(f.get("identity") == "unknown" for f in result.get("faces", []))
+            if has_unknown:
                 alert_log.append(result)
 
             if save_all:

@@ -39,12 +39,11 @@ def upload_snapshot_and_alert(filepath, filename, detection_result):
         # 2. Get Public URL
         public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(storage_path)
         
-        # 3. Create an Alert record
         alert_response = supabase.table('alerts').insert({
             "shelter_id": SHELTER_ID,
             "alert_type": "intrusion",
             "status": "open",
-            "severity": "high",
+            "severity": "critical",
             "message": "Unrecognized person detected.",
         }).execute()
         

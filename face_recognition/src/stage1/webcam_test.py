@@ -34,6 +34,8 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 from mtcnn import MTCNN
+import threading
+from supabase_uploader import upload_snapshot_and_alert
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -300,6 +302,7 @@ def run(cam_index: int = 0,
     fps         = 0.0
     last_result = {}
     alert_log   = []
+    unknown_present_last_frame = False
 
     t_start = datetime.now()
 
@@ -323,8 +326,23 @@ def run(cam_index: int = 0,
             )
             last_result = result
 
-            # Hanya tambahkan ke log/simpan data jika ada orang 'unknown' (menghindari spam ruangan kosong)
             has_unknown = any(f.get("identity") == "unknown" for f in result.get("faces", []))
+            
+            # Trigger capture ONLY once per detection event
+            if has_unknown and not unknown_present_last_frame:
+                print("  [Alert] Unknown face detected! Capturing snapshot...")
+                
+                # 1. Save locally
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                filename = f"intrusion_{ts}.jpg"
+                path = SNAPSHOT_DIR / filename
+                cv2.imwrite(str(path), annotated)
+                
+                # 2. Upload in background thread to avoid freezing the camera feed
+                threading.Thread(target=upload_snapshot_and_alert, args=(str(path), filename, result)).start()
+
+            unknown_present_last_frame = has_unknown
+
             if has_unknown:
                 alert_log.append(result)
 

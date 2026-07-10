@@ -1,8 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Shield, Users, Sliders, Settings, MapPin, Plus, Loader2, AlertCircle, X, Trash2, AlertTriangle } from 'lucide-react'
+import { Shield, Users, Sliders, Settings, MapPin, Plus, Loader2, AlertCircle, X, Trash2, AlertTriangle, Timer } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
 import Pagination from '@/components/ui/Pagination'
 import Dropdown from '@/components/ui/Dropdown'
+
+// Sensor interval options (ms -> label)
+const INTERVAL_OPTIONS = [
+  { label: '1 detik',  value: 1000 },
+  { label: '2 detik',  value: 2000 },
+  { label: '5 detik',  value: 5000 },
+  { label: '10 detik', value: 10000 },
+  { label: '30 detik', value: 30000 },
+  { label: '60 detik', value: 60000 },
+]
 
 const tabs = [
   { id: 'shelters', label: 'Shelters', icon: MapPin },
@@ -353,7 +363,9 @@ function ThresholdsTab() {
         vibration_warning: parseFloat(editForm.vibration_warning),
         vibration_critical: parseFloat(editForm.vibration_critical),
         humidity_warning: parseFloat(editForm.humidity_warning),
-        humidity_critical: parseFloat(editForm.humidity_critical)
+        humidity_critical: parseFloat(editForm.humidity_critical),
+        temp_interval_ms: parseInt(editForm.temp_interval_ms, 10),
+        vibration_interval_ms: parseInt(editForm.vibration_interval_ms, 10),
       }
       await dashboardService.updateThresholds(showEditModal.shelter_id, updates)
       
@@ -416,30 +428,44 @@ function ThresholdsTab() {
           <div key={shelter.shelter_id} className="glass-card p-5">
             <h3 className="mb-3 text-sm font-semibold text-surface-200">{shelter.shelter_name}</h3>
             {t ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Temp Warning</p>
-                  <p className="text-lg font-bold text-amber-400">{t.temp_warning}°C</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-surface-500">Temp Warning</p>
+                    <p className="text-lg font-bold text-amber-400">{t.temp_warning}°C</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-surface-500">Temp Critical</p>
+                    <p className="text-lg font-bold text-red-400">{t.temp_critical}°C</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Warning</p>
+                    <p className="text-lg font-bold text-amber-400">{t.vibration_warning}g</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Critical</p>
+                    <p className="text-lg font-bold text-red-400">{t.vibration_critical}g</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Warning</p>
+                    <p className="text-lg font-bold text-sky-400">{t.humidity_warning}%</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Critical</p>
+                    <p className="text-lg font-bold text-red-400">{t.humidity_critical || 90}%</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Temp Critical</p>
-                  <p className="text-lg font-bold text-red-400">{t.temp_critical}°C</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Warning</p>
-                  <p className="text-lg font-bold text-amber-400">{t.vibration_warning}g</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Critical</p>
-                  <p className="text-lg font-bold text-red-400">{t.vibration_critical}g</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Warning</p>
-                  <p className="text-lg font-bold text-sky-400">{t.humidity_warning}%</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Critical</p>
-                  <p className="text-lg font-bold text-red-400">{t.humidity_critical || 90}%</p>
+                {/* Sensor Interval Summary */}
+                <div className="flex items-center gap-4 rounded-lg border border-surface-700/50 bg-surface-900/40 px-4 py-2.5">
+                  <Timer className="h-4 w-4 shrink-0 text-primary-400" />
+                  <div className="flex gap-6 text-xs">
+                    <span className="text-surface-400">
+                      Temp interval: <span className="font-semibold text-primary-300">{(t.temp_interval_ms || 5000) / 1000}s</span>
+                    </span>
+                    <span className="text-surface-400">
+                      Vibration interval: <span className="font-semibold text-primary-300">{(t.vibration_interval_ms || 1000) / 1000}s</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -455,6 +481,8 @@ function ThresholdsTab() {
                   vibration_critical: t?.vibration_critical || 20.0,
                   humidity_warning: t?.humidity_warning || 80.0,
                   humidity_critical: t?.humidity_critical || 90.0,
+                  temp_interval_ms: t?.temp_interval_ms || 5000,
+                  vibration_interval_ms: t?.vibration_interval_ms || 1000,
                 })
                 setShowEditModal(shelter)
               }}
@@ -547,6 +575,34 @@ function ThresholdsTab() {
                   />
                 </div>
               </div>
+
+              {/* Sensor Polling Interval */}
+              <div className="rounded-lg border border-primary-500/20 bg-primary-500/5 p-3">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <Timer className="h-3.5 w-3.5 text-primary-400" />
+                  <p className="text-xs font-semibold text-primary-300">Sensor Polling Interval</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs text-surface-400">Temperature &amp; Humidity</label>
+                    <Dropdown
+                      value={editForm.temp_interval_ms}
+                      onChange={(val) => setEditForm({ ...editForm, temp_interval_ms: val })}
+                      options={INTERVAL_OPTIONS}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-surface-400">Vibration</label>
+                    <Dropdown
+                      value={editForm.vibration_interval_ms}
+                      onChange={(val) => setEditForm({ ...editForm, vibration_interval_ms: val })}
+                      options={INTERVAL_OPTIONS}
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] text-surface-500">Bridge akan otomatis mengirim config ke ESP32 dalam ~60 detik.</p>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"

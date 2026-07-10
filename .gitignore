@@ -101,3 +101,6 @@ desktop.ini
 *.swp
 
 models/
+
+# ── Scripts ──────────────────────────────────────────────────────
+face_recognition/src/pi_camera/pi_camera_test.py

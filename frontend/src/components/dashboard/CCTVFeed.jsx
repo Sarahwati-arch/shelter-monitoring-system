@@ -52,11 +52,15 @@ export default function CCTVFeed({ shelterId }) {
       {/* Thumbnail area */}
       <div className="relative aspect-video bg-surface-900/80">
         {evidence.public_url ? (
-          <img 
-            src={evidence.public_url} 
-            alt="CCTV Capture" 
-            className="h-full w-full object-cover"
-          />
+          <>
+            {console.log('CCTV Image URL:', evidence.public_url)}
+            <img
+              src={evidence.public_url}
+              alt="CCTV Capture"
+              className="relative z-10 h-full w-full object-cover"
+              onError={(e) => console.error("Image failed to load", e.target.src)}
+            />
+          </>
         ) : (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
@@ -69,9 +73,8 @@ export default function CCTVFeed({ shelterId }) {
         {/* Overlay badges */}
         <div className="absolute left-2 top-2 flex gap-1.5">
           <span
-            className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${
-              alertTypeColors[evidence.alerts?.alert_type] || 'bg-surface-500/20 text-surface-400'
-            }`}
+            className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase ${alertTypeColors[evidence.alerts?.alert_type] || 'bg-surface-500/20 text-surface-400'
+              }`}
           >
             {evidence.alerts?.alert_type || 'Manual'}
           </span>

@@ -6,3 +6,5 @@ mtcnn>=0.1.1
 facenet-pytorch>=2.5.3
 numpy>=1.26.0
 Pillow>=10.2.0
+supabase>=2.3.0
+python-dotenv>=1.0.0

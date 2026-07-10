@@ -55,7 +55,7 @@ else:
     print("WARN: AI Model or Scaler not found. AI features disabled.")
 
 CLASS_NAMES = {0: "Normal/AC", 1: "Footsteps", 2: "Sabotage/Maintenance", 3: "Vehicle", 4: "Earthquake"}
-CLASS_RISK_MAP = {0: "low", 1: "low", 2: "high", 3: "medium", 4: "critical"}
+CLASS_RISK_MAP = {0: "low", 1: "low", 2: "high", 3: "medium", 4: "high"}
 _ai_buffers: dict = {}
 _last_ai_metadata: dict = {}
 
@@ -100,6 +100,16 @@ _device_cache_ts: float = 0
 _threshold_cache: dict = {}  # {shelter_id: {temp_warning, temp_critical, ...}}
 _threshold_cache_ttl = 300  # 5 minutes
 _threshold_cache_ts: float = 0
+
+# ---------------------------------------------------------------------------
+# Sensor interval config publishing
+# ---------------------------------------------------------------------------
+
+_interval_cache: dict = {}         # {shelter_id: {temp_interval_ms, vib_interval_ms}}
+_interval_cache_ttl = 60           # poll every 60 seconds
+_interval_cache_ts: float = 0
+_last_published_interval: dict = {}  # {device_token: {temp_interval_ms, vib_interval_ms}}
+_mqtt_client_ref = None            # reference to MQTT client set after connect
 
 
 def resolve_device(token: str) -> dict | None:
@@ -193,7 +203,7 @@ def calc_risk_level(accel_x: float, accel_y: float, accel_z: float, shelter_id: 
     vib_warning = thresholds.get("vibration_warning", 10.0)
     
     if magnitude >= vib_critical:
-        return "critical"
+        return "high"
     elif magnitude >= vib_warning:
         return "medium"
     return "low"
@@ -218,10 +228,95 @@ def load_thresholds(shelter_id: str) -> dict:
         print(f"  -> WARN: Could not load thresholds for {shelter_id}: {e}")
 
     # Fallback defaults
-    defaults = {"temp_warning": 35.0, "temp_critical": 40.0}
+    defaults = {"temp_warning": 35.0, "temp_critical": 40.0, "vibration_warning": 0.3, "vibration_critical": 0.7}
     _threshold_cache[shelter_id] = defaults
     _threshold_cache_ts = now
     return defaults
+
+
+def load_sensor_intervals(shelter_id: str) -> dict:
+    """Load temp_interval_ms and vibration_interval_ms for a shelter (cached 60s)."""
+    global _interval_cache, _interval_cache_ts
+
+    now = time.time()
+    if shelter_id in _interval_cache and (now - _interval_cache_ts) < _interval_cache_ttl:
+        return _interval_cache[shelter_id]
+
+    try:
+        resp = (
+            supabase.table("thresholds")
+            .select("temp_interval_ms, vibration_interval_ms")
+            .eq("shelter_id", shelter_id)
+            .maybe_single()
+            .execute()
+        )
+        if resp.data:
+            intervals = {
+                "temp_interval_ms":      int(resp.data.get("temp_interval_ms", 5000)),
+                "vibration_interval_ms": int(resp.data.get("vibration_interval_ms", 1000)),
+            }
+            _interval_cache[shelter_id] = intervals
+            _interval_cache_ts = now
+            return intervals
+    except Exception as e:
+        print(f"  -> WARN: Could not load sensor intervals for {shelter_id}: {e}")
+
+    # Fallback defaults
+    defaults = {"temp_interval_ms": 5000, "vibration_interval_ms": 1000}
+    _interval_cache[shelter_id] = defaults
+    _interval_cache_ts = now
+    return defaults
+
+
+def publish_device_configs(mqtt_client) -> None:
+    """Poll all active devices and publish interval config via MQTT if changed."""
+    global _last_published_interval
+
+    try:
+        resp = (
+            supabase.table("devices")
+            .select("token, device_type, shelter_id")
+            .eq("status", "active")
+            .in_("device_type", ["temperature", "vibration"])
+            .execute()
+        )
+        devices = resp.data or []
+    except Exception as e:
+        print(f"[Config] Could not fetch devices: {e}")
+        return
+
+    for device in devices:
+        token       = device.get("token")
+        dtype       = device.get("device_type")
+        shelter_id  = device.get("shelter_id")
+        if not token or not shelter_id:
+            continue
+
+        intervals = load_sensor_intervals(shelter_id)
+        thresholds = load_thresholds(shelter_id)
+
+        if dtype == "temperature":
+            payload_dict = {
+                "temp_interval_ms": intervals["temp_interval_ms"],
+                "temp_warn": thresholds.get("temp_warning", 35.0),
+                "temp_crit": thresholds.get("temp_critical", 40.0)
+            }
+        else:  # vibration
+            payload_dict = {
+                "vib_interval_ms": intervals["vibration_interval_ms"],
+                "vib_warn": thresholds.get("vibration_warning", 0.3),
+                "vib_crit": thresholds.get("vibration_critical", 0.7)
+            }
+
+        payload = json.dumps(payload_dict)
+        last = _last_published_interval.get(token, {})
+        
+        # Only publish if value changed (or never published)
+        if last != payload_dict:
+            topic = f"{token}/Config"
+            mqtt_client.publish(topic, payload, retain=True)
+            _last_published_interval[token] = payload_dict
+            print(f"[Config] Published {payload} -> {topic}")
 
 
 def calc_env_risk_level(temperature: float, humidity: float, shelter_id: str) -> tuple[str, list[str]]:
@@ -484,6 +579,7 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
 
 
 def on_connect(client, userdata, flags, reason_code, properties=None):
+    global _mqtt_client_ref
     if reason_code == 0:
         print(f"Connected to MQTT broker {MQTT_BROKER}:{MQTT_PORT}")
         # Public brokers often block root '#' subscriptions, use '+' instead
@@ -491,11 +587,21 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         client.subscribe("+/Gyro")
         client.subscribe("+/Temp")
         print("Subscribed to: +/Accel, +/Gyro, +/Temp")
+        _mqtt_client_ref = client
+        # Immediately push current interval config to all active devices
+        publish_device_configs(client)
     else:
         print(f"MQTT connection failed with code: {reason_code}")
 
 
+# Periodic config push tracker
+_last_config_push_ts: float = 0
+CONFIG_PUSH_INTERVAL = 60  # seconds
+
+
 def on_message(client, userdata, msg):
+    global _last_config_push_ts
+
     print(f"DEBUG: received message on {msg.topic}")
     topic = msg.topic
     # Expecting: <device_token>/<sensor_type> (e.g. tok_esp32_temp_alpha_001/Temp)
@@ -534,14 +640,21 @@ def on_message(client, userdata, msg):
         buf["gyro_ts"] = now
     elif sensor_type == "Temp":
         insert_temperature(payload, shelter_id, device_id)
-        return
     else:
         return
 
-    try:
-        try_insert(shelter_id, device_id)
-    except Exception as e:
-        print(f"  -> ERROR inserting to Supabase: {e}")
+    # Periodically re-push interval config to all devices (every 60s)
+    if now - _last_config_push_ts >= CONFIG_PUSH_INTERVAL:
+        _last_config_push_ts = now
+        # Clear interval cache so fresh values are fetched from DB
+        _interval_cache.clear()
+        publish_device_configs(client)
+
+    if sensor_type in ("Accel", "Gyro"):
+        try:
+            try_insert(shelter_id, device_id)
+        except Exception as e:
+            print(f"  -> ERROR inserting to Supabase: {e}")
 
 
 def on_disconnect(client, userdata, flags, reason_code, properties=None):

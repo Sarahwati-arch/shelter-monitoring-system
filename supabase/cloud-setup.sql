@@ -86,9 +86,12 @@ CREATE TABLE thresholds (
     shelter_id UUID UNIQUE REFERENCES shelters(shelter_id) ON DELETE CASCADE,
     temp_warning FLOAT DEFAULT 35.0,
     temp_critical FLOAT DEFAULT 40.0,
-    vibration_limit FLOAT DEFAULT 2.0,
+    vibration_warning FLOAT DEFAULT 0.3,
+    vibration_critical FLOAT DEFAULT 0.7,
     humidity_warning FLOAT DEFAULT 80.0,
     humidity_critical FLOAT DEFAULT 90.0,
+    temp_interval_ms INTEGER DEFAULT 5000 CHECK (temp_interval_ms >= 1000 AND temp_interval_ms <= 60000),
+    vibration_interval_ms INTEGER DEFAULT 1000 CHECK (vibration_interval_ms >= 1000 AND vibration_interval_ms <= 60000),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -376,10 +379,10 @@ INSERT INTO shelters (shelter_id, shelter_name, location, description, latitude,
 ON CONFLICT (shelter_id) DO NOTHING;
 
 -- Sample thresholds
-INSERT INTO thresholds (shelter_id, temp_warning, temp_critical, vibration_limit, humidity_warning, humidity_critical) VALUES
-    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 35.0, 40.0, 2.0, 80.0, 90.0),
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 33.0, 38.0, 1.8, 85.0, 95.0),
-    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 36.0, 42.0, 2.5, 75.0, 85.0)
+INSERT INTO thresholds (shelter_id, temp_warning, temp_critical, vibration_warning, vibration_critical, humidity_warning, humidity_critical, temp_interval_ms, vibration_interval_ms) VALUES
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 35.0, 40.0, 0.3, 0.7, 80.0, 90.0, 5000, 1000),
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 33.0, 38.0, 0.3, 0.7, 85.0, 95.0, 5000, 1000),
+    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 36.0, 42.0, 0.4, 0.8, 75.0, 85.0, 5000, 1000)
 ON CONFLICT (shelter_id) DO NOTHING;
 
 -- Sample devices (2 temperature + 1 vibration + 2 cameras)

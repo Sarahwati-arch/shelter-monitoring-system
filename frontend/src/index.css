@@ -78,6 +78,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     /* Mapped inverted for light mode — Telkom neutral palette */
     --theme-surface-50: #1D1D1B;    /* Telkom Off-Black (teks utama) */
     --theme-surface-100: #2e2e2c;
@@ -101,6 +102,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     /* Dark Mode — Charcoal Netral + Subtle Telkom Red Tint */
     --theme-surface-50: #f5f3f3;    /* warm white tint */
     --theme-surface-100: #e8e4e4;

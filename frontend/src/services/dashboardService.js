@@ -302,6 +302,7 @@ export const dashboardService = {
         shelters (shelter_name)
       `)
       .order('created_at', { ascending: false })
+      .limit(500)
 
     if (filters.status && filters.status !== 'all') {
       query = query.eq('status', filters.status)

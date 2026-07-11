@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { cn } from '@/utils/helpers'
 
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Alerts', href: '/alerts', icon: Bell },
   { name: 'Evidence', href: '/evidence', icon: Camera },
   { name: 'Devices', href: '/devices', icon: Cpu },
+  { name: 'Reports', href: '/reports', icon: FileSpreadsheet },
   { name: 'Admin', href: '/admin', icon: Shield },
   { name: 'Profile', href: '/profile', icon: User },
 ]

@@ -11,6 +11,7 @@ const pageTitles = {
   '/devices': 'Devices',
   '/admin': 'Admin Panel',
   '/profile': 'Profile',
+  '/reports': 'Export Reports',
 }
 
 export default function AppLayout() {

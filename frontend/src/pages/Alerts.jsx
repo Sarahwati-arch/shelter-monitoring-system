@@ -40,7 +40,7 @@ export default function Alerts() {
   const [shelterFilter, setShelterFilter] = useState(null)
   const [shelters, setShelters] = useState([])
   const [selectedAlert, setSelectedAlert] = useState(null)
-  const [actionLoading, setActionLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -108,15 +108,16 @@ export default function Alerts() {
   }, [filteredAlerts, currentPage, totalPages])
 
   const handleUpdateStatus = async (alertId, newStatus) => {
-    setActionLoading(true)
+    setActionLoading(newStatus)
     try {
       await dashboardService.updateAlertStatus(alertId, newStatus)
       await fetchAlerts()
       setSelectedAlert(null)
     } catch (error) {
       console.error('Error updating alert:', error)
+      alert(`Gagal memproses aksi: ${error.message || 'Mungkin Anda tidak memiliki hak akses (RLS) atau koneksi lambat.'}`)
     } finally {
-      setActionLoading(false)
+      setActionLoading(null)
     }
   }
 
@@ -333,20 +334,20 @@ export default function Alerts() {
               <div className="flex gap-2 pt-2">
                 {selectedAlert.status === 'open' && (
                   <button 
-                    disabled={actionLoading}
+                    disabled={actionLoading !== null}
                     onClick={() => handleUpdateStatus(selectedAlert.alert_id, 'acknowledged')}
                     className="btn btn-primary flex-1"
                   >
-                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Acknowledge'}
+                    {actionLoading === 'acknowledged' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Acknowledge'}
                   </button>
                 )}
                 {selectedAlert.status !== 'closed' && (
                   <button 
-                    disabled={actionLoading}
+                    disabled={actionLoading !== null}
                     onClick={() => handleUpdateStatus(selectedAlert.alert_id, 'closed')}
                     className="btn btn-ghost flex-1"
                   >
-                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Close Alert'}
+                    {actionLoading === 'closed' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Close Alert'}
                   </button>
                 )}
               </div>

@@ -1,3 +1,4 @@
+
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -6,6 +7,7 @@ import {
   Cpu,
   Shield,
   User,
+  UserPlus,
   ChevronLeft,
   ChevronRight,
   Activity,

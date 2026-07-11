@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Shield, Users, Sliders, Settings, MapPin, Plus, Loader2, AlertCircle, X, Trash2, AlertTriangle, Timer } from 'lucide-react'
+import { Shield, Users, Sliders, Settings, MapPin, Plus, Loader2, AlertCircle, X, Trash2, AlertTriangle, Timer, UserPlus } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
 import Pagination from '@/components/ui/Pagination'
 import Dropdown from '@/components/ui/Dropdown'
+import EmployeeEnrollment from '@/pages/EmployeeEnrollment'
 
 // Sensor interval options (ms -> label)
 const INTERVAL_OPTIONS = [
@@ -18,6 +19,7 @@ const tabs = [
   { id: 'shelters', label: 'Shelters', icon: MapPin },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'thresholds', label: 'Thresholds', icon: Sliders },
+  { id: 'enrollment', label: 'Face Enrollment', icon: UserPlus },
   { id: 'system', label: 'System', icon: Settings },
 ]
 
@@ -896,6 +898,9 @@ export default function Admin() {
       </div>
       <div className={activeTab === 'thresholds' ? 'block' : 'hidden'}>
         {mountedTabs.thresholds && <ThresholdsTab />}
+      </div>
+      <div className={activeTab === 'enrollment' ? 'block' : 'hidden'}>
+        {mountedTabs.enrollment && <EmployeeEnrollment />}
       </div>
       <div className={activeTab === 'system' ? 'block' : 'hidden'}>
         {mountedTabs.system && <SystemTab />}

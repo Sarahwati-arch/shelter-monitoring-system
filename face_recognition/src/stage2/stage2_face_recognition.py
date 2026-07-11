@@ -289,6 +289,132 @@ def enroll_all(faces_dir: Path = FACES_DIR) -> dict:
     return summary
 
 
+def enroll_single_image(name: str, photo_path: str) -> bool:
+    """
+    Generate embedding for a single image and append it to the existing
+    embeddings.npy and metadata.json without rescanning the faces directory.
+    Useful for edge syncing from cloud dashboard.
+    """
+    logger.info(f"[{name}] Enrolling single photo from {photo_path}…")
+    
+    emb = _get_embedding(Path(photo_path))
+    if emb is None:
+        logger.error(f"Failed to extract face from {photo_path}")
+        return False
+
+    # Load existing metadata or initialize if not found
+    if not METADATA_JSON.exists() or not EMBEDDINGS_NPY.exists():
+        logger.info("Initializing new embeddings and metadata...")
+        metadata = {
+            "model": MODEL_NAME,
+            "enrolled_at": datetime.now().isoformat(),
+            "identities": {},
+            "rows": [],
+            "adaptive_thresholds": {}
+        }
+        embedding_matrix = np.empty((0, emb.shape[0]), dtype=np.float32)
+    else:
+        with open(METADATA_JSON, "r") as f:
+            metadata = json.load(f)
+        embedding_matrix = np.load(str(EMBEDDINGS_NPY))
+
+    # Append new embedding
+    embedding_matrix = np.vstack([embedding_matrix, emb])
+    np.save(str(EMBEDDINGS_NPY), embedding_matrix)
+
+    # Update metadata
+    row_idx = len(metadata["rows"])
+    if name not in metadata["identities"]:
+        metadata["identities"][name] = []
+        
+    metadata["identities"][name].append(row_idx)
+    metadata["rows"].append({
+        "row": row_idx,
+        "name": name,
+        "photo_path": photo_path,
+    })
+
+    # Recompute thresholds
+    thresholds = _compute_adaptive_thresholds(embedding_matrix, metadata)
+    metadata["adaptive_thresholds"] = thresholds
+    
+    with open(METADATA_JSON, "w") as f:
+        json.dump(metadata, f, indent=2)
+
+    logger.info(f"[{name}] Successfully appended embedding. New row idx: {row_idx}")
+    return True
+
+
+def enroll_multiple_images(name: str, photo_paths: list[str]) -> bool:
+    """
+    Generate embeddings for multiple images and append them to the existing
+    embeddings.npy and metadata.json in a single batch operation.
+    Highly optimized for edge syncing multiple photos at once.
+    """
+    logger.info(f"[{name}] Enrolling {len(photo_paths)} photos in batch…")
+    
+    embs = []
+    valid_paths = []
+    
+    for photo_path in photo_paths:
+        emb = _get_embedding(Path(photo_path))
+        if emb is not None:
+            embs.append(emb)
+            valid_paths.append(photo_path)
+        else:
+            logger.error(f"Failed to extract face from {photo_path}")
+            
+    if not embs:
+        logger.error(f"[{name}] Failed to extract any faces from the provided {len(photo_paths)} photos.")
+        return False
+        
+    new_embeddings = np.stack(embs) # shape (N, D)
+
+    # Load existing metadata or initialize if not found
+    if not METADATA_JSON.exists() or not EMBEDDINGS_NPY.exists():
+        logger.info("Initializing new embeddings and metadata...")
+        metadata = {
+            "model": MODEL_NAME,
+            "enrolled_at": datetime.now().isoformat(),
+            "identities": {},
+            "rows": [],
+            "adaptive_thresholds": {}
+        }
+        embedding_matrix = np.empty((0, new_embeddings.shape[1]), dtype=np.float32)
+    else:
+        with open(METADATA_JSON, "r") as f:
+            metadata = json.load(f)
+        embedding_matrix = np.load(str(EMBEDDINGS_NPY))
+
+    # Append new embeddings
+    embedding_matrix = np.vstack([embedding_matrix, new_embeddings])
+    np.save(str(EMBEDDINGS_NPY), embedding_matrix)
+
+    # Update metadata
+    if name not in metadata["identities"]:
+        metadata["identities"][name] = []
+        
+    for i, photo_path in enumerate(valid_paths):
+        row_idx = len(metadata["rows"])
+        metadata["identities"][name].append(row_idx)
+        metadata["rows"].append({
+            "row": row_idx,
+            "name": name,
+            "photo_path": photo_path,
+        })
+
+    # Recompute thresholds once for all new additions
+    thresholds = _compute_adaptive_thresholds(embedding_matrix, metadata)
+    metadata["adaptive_thresholds"] = thresholds
+    
+    with open(METADATA_JSON, "w") as f:
+        json.dump(metadata, f, indent=2)
+
+    logger.info(f"[{name}] Successfully appended {len(embs)} embeddings in batch.")
+    return True
+
+
+
 # ─────────────────────────────────────────────────────────────────
 # Adaptive threshold computation
 # ─────────────────────────────────────────────────────────────────

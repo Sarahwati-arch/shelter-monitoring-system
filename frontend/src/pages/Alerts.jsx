@@ -37,18 +37,37 @@ export default function Alerts() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [severityFilter, setSeverityFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [shelterFilter, setShelterFilter] = useState(null)
+  const [shelters, setShelters] = useState([])
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
+  useEffect(() => {
+    const fetchShelters = async () => {
+      try {
+        const data = await dashboardService.getShelters()
+        setShelters(data)
+        if (data.length > 0) {
+          setShelterFilter(data[0].shelter_id)
+        }
+      } catch (error) {
+        console.error('Error fetching shelters:', error)
+      }
+    }
+    fetchShelters()
+  }, [])
+
   const fetchAlerts = async () => {
+    if (shelterFilter === null && shelters.length === 0) return // Wait for initial shelter load
     setLoading(true)
     try {
       const data = await dashboardService.getAlerts({
         status: statusFilter,
         alert_type: typeFilter,
         severity: severityFilter,
+        shelter_id: shelterFilter || 'all'
       })
       setAlerts(data)
     } catch (error) {
@@ -59,8 +78,10 @@ export default function Alerts() {
   }
 
   useEffect(() => {
-    fetchAlerts()
-  }, [statusFilter, typeFilter, severityFilter])
+    if (shelterFilter !== null || shelters.length > 0) {
+      fetchAlerts()
+    }
+  }, [statusFilter, typeFilter, severityFilter, shelterFilter, shelters.length])
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((a) => {
@@ -72,7 +93,7 @@ export default function Alerts() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter, typeFilter, severityFilter])
+  }, [searchQuery, statusFilter, typeFilter, severityFilter, shelterFilter])
 
   const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage)
   const paginatedAlerts = useMemo(() => {
@@ -117,6 +138,17 @@ export default function Alerts() {
               className="input pl-9 text-sm"
             />
           </div>
+
+          {/* Shelter */}
+          <Dropdown
+            value={shelterFilter || 'all'}
+            onChange={(val) => setShelterFilter(val === 'all' ? null : val)}
+            options={[
+              { label: 'All Shelters', value: 'all' },
+              ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
+            ]}
+            className="w-48"
+          />
 
           {/* Status */}
           <Dropdown

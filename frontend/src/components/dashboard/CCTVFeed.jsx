@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
-import { Camera, Eye, Clock, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Camera, Eye, Clock, Loader2, AlertTriangle, Calendar, ChevronRight } from 'lucide-react'
 import { timeAgo } from '@/utils/helpers'
 import { dashboardService } from '@/services/dashboardService'
 
 const alertTypeColors = {
   intrusion: 'bg-red-500/20 text-red-400 border-red-500/30',
+  unknown_person: 'bg-red-500/20 text-red-400 border-red-500/30',
   temp: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   vibration: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
 }
 
 export default function CCTVFeed({ shelterId }) {
+  const navigate = useNavigate()
   const [evidence, setEvidence] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -96,11 +99,48 @@ export default function CCTVFeed({ shelterId }) {
         </div>
       </div>
 
-      {/* Info bar */}
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-1.5 text-[10px] text-surface-500">
-          <Clock className="h-3 w-3" />
-          {timeAgo(evidence.captured_at)}
+      {/* Info Panel */}
+      <div className="flex flex-col gap-3 p-4 bg-surface-900/50">
+        
+        {/* Header - Status */}
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-1">
+            {(evidence.alerts?.alert_type === 'unknown_person' || evidence.alerts?.alert_type === 'intrusion') ? (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-red-400">
+                <AlertTriangle className="h-4 w-4" />
+                Unknown Person Detected
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-surface-200 capitalize">
+                <Camera className="h-4 w-4 text-surface-400" />
+                {(evidence.alerts?.alert_type || 'Manual Capture').replace('_', ' ')}
+              </div>
+            )}
+            
+            <div className="flex items-center gap-1.5 text-[10px] text-surface-500">
+              <Calendar className="h-3 w-3" />
+              {new Date(evidence.captured_at).toLocaleString(undefined, { 
+                dateStyle: 'medium', 
+                timeStyle: 'short' 
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-[10px] font-medium text-surface-400 bg-surface-800/50 px-2 py-1 rounded-md">
+            <Clock className="h-3 w-3" />
+            {timeAgo(evidence.captured_at)}
+          </div>
+        </div>
+
+        {/* Action / Meta Bar */}
+        <div className="flex items-center justify-end mt-1 pt-3 border-t border-surface-800/50">
+          <button 
+            onClick={() => navigate('/evidence')}
+            className="flex items-center gap-1 text-[10px] font-semibold bg-primary-500/10 text-primary-400 px-3 py-1.5 rounded-lg hover:bg-primary-500/20 transition-colors"
+          >
+            Review Evidence
+            <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
       </div>
     </div>

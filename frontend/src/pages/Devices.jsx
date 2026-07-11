@@ -69,18 +69,21 @@ export default function Devices() {
     }
   }, [selectedShelter])
 
-  const fetchShelters = useCallback(async () => {
-    try {
-      const data = await dashboardService.getShelters()
-      setShelters(data)
-    } catch (error) {
-      console.error('Error fetching shelters:', error)
-    }
-  }, [])
-
   useEffect(() => {
+    const fetchShelters = async () => {
+      try {
+        const data = await dashboardService.getShelters()
+        setShelters(data)
+        // Set default shelter only on initial load
+        if (data.length > 0) {
+          setSelectedShelter(prev => prev === null ? data[0].shelter_id : prev)
+        }
+      } catch (error) {
+        console.error('Error fetching shelters:', error)
+      }
+    }
     fetchShelters()
-  }, [fetchShelters])
+  }, [])
 
   useEffect(() => {
     fetchDevices()

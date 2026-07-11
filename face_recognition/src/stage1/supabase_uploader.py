@@ -1,5 +1,6 @@
 import os
 import uuid
+import requests
 from datetime import datetime
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -10,6 +11,8 @@ load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 SHELTER_ID = os.environ.get("SHELTER_ID")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHAT_ID_FALLBACK = os.environ.get("CHAT_ID")
 BUCKET_NAME = "cctv-evidence"
 
 # Initialize Supabase client
@@ -18,6 +21,34 @@ if SUPABASE_URL and SUPABASE_KEY:
 else:
     supabase = None
     print("Warning: SUPABASE_URL or SUPABASE_KEY missing. Upload disabled.")
+
+def get_telegram_chat_ids() -> list:
+    if not supabase:
+        return [CHAT_ID_FALLBACK] if CHAT_ID_FALLBACK else []
+    try:
+        resp = supabase.table("users").select("telegram_chat_id").not_.is_("telegram_chat_id", "null").execute()
+        ids = [row["telegram_chat_id"] for row in (resp.data or []) if row.get("telegram_chat_id")]
+        if ids:
+            return ids
+    except Exception as e:
+        print(f"[TG] Gagal fetch Chat ID dari DB: {e}")
+    return [CHAT_ID_FALLBACK] if CHAT_ID_FALLBACK else []
+
+def send_telegram(message: str) -> None:
+    if not BOT_TOKEN:
+        print("[TG] BOT_TOKEN belum diset di .env, skip.")
+        return
+    chat_ids = get_telegram_chat_ids()
+    if not chat_ids:
+        print("[TG] Tidak ada Chat ID yang tersedia, skip.")
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    for chat_id in chat_ids:
+        try:
+            requests.post(url, data={"chat_id": chat_id, "text": message}, timeout=5)
+            print(f"[TG] Alert sent to {chat_id}.")
+        except Exception as e:
+            print(f"[TG ERROR] chat_id={chat_id}: {e}")
 
 def upload_snapshot_and_alert(filepath, filename, detection_result):
     """
@@ -39,12 +70,13 @@ def upload_snapshot_and_alert(filepath, filename, detection_result):
         # 2. Get Public URL
         public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(storage_path)
         
+        alert_message = "Unrecognized person detected."
         alert_response = supabase.table('alerts').insert({
             "shelter_id": SHELTER_ID,
-            "alert_type": "intrusion",
+            "alert_type": "unknown_person",
             "status": "open",
             "severity": "critical",
-            "message": "Unrecognized person detected.",
+            "message": alert_message,
         }).execute()
         
         if not alert_response.data:
@@ -64,6 +96,10 @@ def upload_snapshot_and_alert(filepath, filename, detection_result):
         }).execute()
 
         print(f"  [Supabase] Successfully uploaded snapshot & created alert: {alert_id}")
+        
+        # 5. Send Telegram notification
+        shelter_short = SHELTER_ID[-4:] if SHELTER_ID else "UNKNOWN"
+        send_telegram(f"🚨 [SHELTER {shelter_short}] CCTV Alert: {alert_message}\nEvidence: {public_url}")
         
     except Exception as e:
         print(f"  [Supabase] Error uploading evidence: {e}")

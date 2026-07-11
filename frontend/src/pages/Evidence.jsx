@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Camera, ImageOff, Filter, Loader2 } from 'lucide-react'
+import { Camera, ImageOff, Filter, Loader2, X } from 'lucide-react'
 import { formatDateTime, timeAgo } from '@/utils/helpers'
 import { dashboardService } from '@/services/dashboardService'
 import Pagination from '@/components/ui/Pagination'
@@ -13,19 +13,26 @@ const alertTypeColors = {
 
 export default function Evidence() {
   const [shelters, setShelters] = useState([])
-  const [selectedShelter, setSelectedShelter] = useState('all')
+  const [selectedShelter, setSelectedShelter] = useState(null)
   const [evidence, setEvidence] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 9
+  const [selectedImage, setSelectedImage] = useState(null)
 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const sheltersData = await dashboardService.getShelters()
         setShelters(sheltersData)
+        if (sheltersData.length > 0) {
+          setSelectedShelter(sheltersData[0].shelter_id)
+        } else {
+          setLoading(false)
+        }
       } catch (error) {
         console.error('Error fetching shelters:', error)
+        setLoading(false)
       }
     }
     fetchInitialData()
@@ -33,6 +40,7 @@ export default function Evidence() {
 
   useEffect(() => {
     const fetchEvidence = async () => {
+      if (!selectedShelter) return
       setLoading(true)
       try {
         const data = await dashboardService.getAllEvidence(selectedShelter)
@@ -77,7 +85,7 @@ export default function Evidence() {
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-surface-500" />
           <Dropdown
-            value={selectedShelter}
+            value={selectedShelter || ''}
             onChange={(val) => setSelectedShelter(val)}
             options={[
               { label: 'All Shelters', value: 'all' },
@@ -97,7 +105,8 @@ export default function Evidence() {
             {paginatedEvidence.map((item) => (
               <div
                 key={item.evidence_id}
-                className="glass-card group relative aspect-video overflow-hidden border border-surface-800/40 transition-all hover:border-surface-700/60"
+                onClick={() => item.public_url && setSelectedImage(item.public_url)}
+                className={`glass-card group relative aspect-video overflow-hidden border border-surface-800/40 transition-all hover:border-surface-700/60 ${item.public_url ? 'cursor-zoom-in' : ''}`}
               >
                 {item.public_url ? (
                   <img
@@ -146,6 +155,24 @@ export default function Evidence() {
           <Camera className="mb-4 h-12 w-12 opacity-20" />
           <h3 className="text-lg font-medium">No Evidence Found</h3>
           <p className="text-sm">Evidence will be captured automatically during security alerts.</p>
+        </div>
+      )}
+
+      {/* Fullscreen Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 p-4 backdrop-blur-sm cursor-zoom-out animate-[fade-in_0.2s_ease-out]"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="absolute top-4 right-4 p-1.5 rounded-full bg-surface-900/50 text-surface-400 hover:bg-surface-800 hover:text-white transition-colors cursor-pointer">
+            <X className="h-5 w-5" />
+          </div>
+          <img 
+            src={selectedImage} 
+            alt="Fullscreen Evidence" 
+            className="max-h-[90vh] max-w-[95vw] object-contain rounded-lg border border-surface-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image itself
+          />
         </div>
       )}
     </div>

@@ -325,7 +325,7 @@ export default function Dashboard() {
         <div className="flex flex-col gap-6">
 
           {/* AI Diagnostics Card */}
-          <div className="flex-none">
+          <div className="flex-1">
             <AIVibrationCard 
               latestMetadata={latest?.vibration_metadata} 
               sensorData={sensorData} 

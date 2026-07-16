@@ -104,3 +104,7 @@ models/
 
 # ── Scripts ──────────────────────────────────────────────────────
 face_recognition/src/pi_camera/pi_camera_test.py
+
+# User specific additions
+.agents/
+form_capstone/

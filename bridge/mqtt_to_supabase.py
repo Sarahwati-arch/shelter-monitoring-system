@@ -417,8 +417,9 @@ def insert_temperature(payload, shelter_id: str, device_id: str) -> None:
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: temp {severity}!")
         
-        if risk_level == "high":
-            send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
+        if risk_level in ["medium", "high"]:
+            icon = "🚨" if risk_level == "high" else "⚠️"
+            send_telegram(f"{icon} [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 def _get_buffer(device_id: str) -> dict:
@@ -569,8 +570,8 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
         supabase.table("alerts").insert(alert).execute()
         print(f"  -> ALERT created: vibration {severity}!")
         
-        if is_critical:
-            send_telegram(f"🚨 [SHELTER {shelter_id[-4:]}] {msg}")
+        icon = "🚨" if is_critical else "⚠️"
+        send_telegram(f"{icon} [SHELTER {shelter_id[-4:]}] {msg}")
 
 
 # ---------------------------------------------------------------------------

@@ -74,7 +74,7 @@ def upload_snapshot_and_alert(filepath, filename, detection_result):
         alert_message = "Unrecognized person detected."
         alert_response = supabase.table('alerts').insert({
             "shelter_id": SHELTER_ID,
-            "alert_type": "unknown_person",
+            "alert_type": "intrusion",
             "status": "open",
             "severity": "critical",
             "message": alert_message,

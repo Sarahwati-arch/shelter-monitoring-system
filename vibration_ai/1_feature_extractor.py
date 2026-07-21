@@ -121,9 +121,17 @@ if __name__ == "__main__":
     json_path = os.path.join(base_dir, "class_4_earthquake", "intermediate_train_w_150000_s_150000.json")
     X_json, y_json = process_earthquake_json(json_path, num_samples=40)
     
+    print("Extracting features from real-life datasets...")
+    real_life_dir = os.path.join(base_dir, "real_life_datasets")
+    # We append class_4_earthquake so the enumerate label automatically becomes 4.
+    # This assumes your real-life earthquake data are .wav files.
+    # If they are JSON, you would process them similarly to the original earthquake dataset.
+    real_life_folders = class_folders + ["class_4_earthquake"]
+    X_real_audio, y_real_audio = extract_from_audio_folders(real_life_dir, real_life_folders)
+
     # Combine data
-    X_all = np.array(X_audio + X_json)
-    y_all = np.array(y_audio + y_json)
+    X_all = np.array(X_audio + X_json + X_real_audio)
+    y_all = np.array(y_audio + y_json + y_real_audio)
     
     print(f"Total extracted shape: X={X_all.shape}, y={y_all.shape}")
     

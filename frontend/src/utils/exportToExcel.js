@@ -6,7 +6,7 @@ export const exportToExcel = (reportData, dateRangeString) => {
   // 1. Calculate Executive Summary
   const avgTemp = temperature.length ? (temperature.reduce((sum, d) => sum + d.temperature, 0) / temperature.length).toFixed(2) : 0
   const avgHumid = temperature.length ? (temperature.reduce((sum, d) => sum + (d.humidity || 0), 0) / temperature.length).toFixed(2) : 0
-  
+
   // For vibration, we use accel_z as an aggregate indicator
   const avgVib = vibration.length ? (vibration.reduce((sum, d) => sum + Math.abs(d.accel_z || 0), 0) / vibration.length).toFixed(2) : 0
 
@@ -73,21 +73,21 @@ export const exportToExcel = (reportData, dateRangeString) => {
 
   // Adjust column widths for better UX (limited to first 50 rows to prevent browser freeze on large datasets)
   const autoSize = (ws) => {
-    if(!ws['!ref']) return
+    if (!ws['!ref']) return
     const colWidths = []
     const range = XLSX.utils.decode_range(ws['!ref'])
     const maxRow = Math.min(range.e.r, range.s.r + 50) // Performance optimization
-    
+
     for (let C = range.s.c; C <= range.e.c; ++C) {
       let maxLen = 10
       for (let R = range.s.r; R <= maxRow; ++R) {
-        const cell = ws[XLSX.utils.encode_cell({c: C, r: R})]
+        const cell = ws[XLSX.utils.encode_cell({ c: C, r: R })]
         if (cell && cell.v) {
           const len = cell.v.toString().length
           if (len > maxLen) maxLen = len
         }
       }
-      colWidths.push({ wch: Math.min(maxLen + 2, 80) }) 
+      colWidths.push({ wch: Math.min(maxLen + 2, 80) })
     }
     ws['!cols'] = colWidths
   }

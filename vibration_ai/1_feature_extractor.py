@@ -114,15 +114,17 @@ if __name__ == "__main__":
         "class_3_vehicle"
     ]
     
+    models_dir = os.path.join(base_dir, "models")
+    
     print("Extracting features from audio folders...")
-    X_audio, y_audio = extract_from_audio_folders(base_dir, class_folders)
+    X_audio, y_audio = extract_from_audio_folders(models_dir, class_folders)
     
     print("Extracting features from earthquake JSON...")
-    json_path = os.path.join(base_dir, "class_4_earthquake", "intermediate_train_w_150000_s_150000.json")
+    json_path = os.path.join(models_dir, "class_4_earthquake", "intermediate_train_w_150000_s_150000.json")
     X_json, y_json = process_earthquake_json(json_path, num_samples=40)
     
     print("Extracting features from real-life datasets...")
-    real_life_dir = os.path.join(base_dir, "real_life_datasets")
+    real_life_dir = os.path.join(models_dir, "real_life_datasets")
     # We append class_4_earthquake so the enumerate label automatically becomes 4.
     # This assumes your real-life earthquake data are .wav files.
     # If they are JSON, you would process them similarly to the original earthquake dataset.

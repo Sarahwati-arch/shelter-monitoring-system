@@ -62,6 +62,33 @@ def extract_from_audio_folders(base_dir, class_folders):
                     
     return X, y
 
+def extract_from_json_folders(base_dir, class_folders):
+    X = []
+    y = []
+    
+    for label, folder in enumerate(class_folders):
+        folder_path = os.path.join(base_dir, folder)
+        if not os.path.isdir(folder_path):
+            print(f"Warning: Directory {folder_path} not found.")
+            continue
+            
+        for file_name in os.listdir(folder_path):
+            if file_name.endswith('.json'):
+                file_path = os.path.join(folder_path, file_name)
+                try:
+                    with open(file_path, 'r') as f:
+                        data = json.load(f)
+                    
+                    if isinstance(data, list) and len(data) > 0:
+                        signal = np.array(data)
+                        features = extract_features_from_signal(signal)
+                        X.append(features)
+                        y.append(label)
+                except Exception as e:
+                    print(f"Error processing {file_path}: {e}")
+                    
+    return X, y
+
 def process_earthquake_json(json_path, num_samples=40):
     X = []
     y = []
@@ -130,10 +157,13 @@ if __name__ == "__main__":
     # If they are JSON, you would process them similarly to the original earthquake dataset.
     real_life_folders = class_folders + ["class_4_earthquake"]
     X_real_audio, y_real_audio = extract_from_audio_folders(real_life_dir, real_life_folders)
+    
+    print("Extracting features from real-life JSON datasets...")
+    X_real_json, y_real_json = extract_from_json_folders(real_life_dir, real_life_folders)
 
     # Combine data
-    X_all = np.array(X_audio + X_json + X_real_audio)
-    y_all = np.array(y_audio + y_json + y_real_audio)
+    X_all = np.array(X_audio + X_json + X_real_audio + X_real_json)
+    y_all = np.array(y_audio + y_json + y_real_audio + y_real_json)
     
     print(f"Total extracted shape: X={X_all.shape}, y={y_all.shape}")
     

@@ -14,7 +14,8 @@ Based on the impact on model accuracy, robustness, and ability to run the pipeli
 [x]| **Critical** | **2. Invalid "JSON" file formats** | The real-world data files (like `class_0_1_normal_ac_without_ac.json.json`) are plain text logs, not valid JSON. `json.load()` will crash the pipeline. | Write a custom Python parser to extract the `accel_x`, `accel_y`, `accel_z` values from the log text and convert them into standard JSON arrays. | **High.** Prevents pipeline crashes and allows real-world data to be used. | Medium |
 [x]| **High** | **3. Real-world JSON data ignored** | `1_feature_extractor.py` only searches for `.wav` files. Even if the JSON files were valid, they are currently silently skipped. | Add a new function in `1_feature_extractor.py` to recursively parse `.json` files and extract the same 14 features from the raw acceleration arrays. | **High.** Ingests the real-world sensor data into the training set, closing the gap between lab data and real deployments. | Medium |
 [x]| **High** | **4. Severely sparse real-world data** | 16 out of 19 real-world files are 0 bytes. Three classes (Sabotage, Vehicle, Earthquake) have absolutely zero real-world examples. | Discard the 0-byte files and manually record new ESP32 sensor data for the missing classes. | **High.** Ensures the model can recognize actual physical events rather than just audio `.wav` representations. | Hard (Time-consuming) |
-| **Medium** | **5. Earthquake class domain mismatch** | The `class_4_earthquake` JSON uses pre-extracted acoustic-emission features (like `hurst_exponent_rs`), whereas your system calculates 14 mechanical vibration features (ZCR, RMS). | Exclude the lab-based Earthquake JSON for now. Replace it entirely with raw ESP32 acceleration data generated via `simulator_earthquake.py`. | **Medium.** Prevents the model from learning a completely different domain/statistical fingerprint, preventing garbage predictions. | Medium |
+[x]| **Medium** | **5. Earthquake class domain mismatch** | The `class_4_earthquake` JSON uses pre-extracted acoustic-emission features (like `hurst_exponent_rs`), whereas your system calculates 14 mechanical vibration features (ZCR, RMS). | Exclude the lab-based Earthquake JSON for now. Replace it entirely with raw ESP32 acceleration data generated via `simulator_earthquake.py`. | **Medium.** Prevents the model from learning a completely different domain/statistical fingerprint, preventing garbage predictions. | Medium |
+[x]| **High** | **6. Unified WAV + JSON Pipeline** | WAVs and JSONs have modality-mismatch problems (different physical units, unknown sample rates, source leaking). | Create `common_schema.py` and unify feature extraction via intermediate `VibrationWindow`. Min-max normalize per-source and resample JSON to 22050 Hz. Split stratify by both source and class. | **High.** Model won't learn source-based shortcuts and can be cleanly evaluated on real-world data separately. | Hard |
 
 ---
 
@@ -82,6 +83,15 @@ Here are the concrete steps to execute the roadmap:
 ### Task 5: Handle the Earthquake domain mismatch
 * **Affected File:** `1_feature_extractor.py` (specifically `process_earthquake_json`).
 * **Action:** Comment out or remove the call to `process_earthquake_json()`. The pre-computed features (`hurst_exponent`, etc.) are incompatible with your real-time 14-feature extraction (`mqtt_to_supabase.py`). Rely strictly on the `.wav` audio files and the new simulated JSON data for the Earthquake class.
+
+### Task 6: Unified WAV + JSON Pipeline
+* **Affected Files:** `1_feature_extractor.py`, `2_model_trainer.py`, `common_schema.py`.
+* **Action:** 
+  1. Create `common_schema.py` defining `VibrationWindow` with `signal`, `sample_rate`, `label`, and `source`.
+  2. Update loaders in `1_feature_extractor.py` to min-max scale raw signals to `[-1, 1]` per source and resample JSON to 22050 Hz.
+  3. Extract features into a shared representation and save a new `features_source.npy`.
+  4. Update `2_model_trainer.py` to stratify splits by a combined `label_source` key and remove the global `StandardScaler` to prevent cross-domain distortion.
+  5. Output per-source accuracy in the final evaluation report.
 
 ---
 

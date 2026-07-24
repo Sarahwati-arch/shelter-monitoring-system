@@ -15,6 +15,7 @@ import numpy as np
 import joblib
 import librosa
 from scipy.stats import skew, kurtosis, median_abs_deviation, iqr
+from scipy import signal as scipy_signal
 
 from paho.mqtt.client import Client as MQTTClient, CallbackAPIVersion
 from supabase import create_client
@@ -41,18 +42,15 @@ CHAT_ID_FALLBACK = os.getenv("CHAT_ID")  # fallback jika DB tidak tersedia
 
 AI_MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "vibration_ai", "models")
 MODEL_PATH = os.path.join(AI_MODELS_DIR, "vibration_classifier.pkl")
-SCALER_PATH = os.path.join(AI_MODELS_DIR, "scaler.pkl")
 
 ai_model = None
-ai_scaler = None
 
-if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
-    print("Loading AI Model and Scaler...")
+if os.path.exists(MODEL_PATH):
+    print("Loading AI Model...")
     ai_model = joblib.load(MODEL_PATH)
-    ai_scaler = joblib.load(SCALER_PATH)
     print("AI Model loaded successfully.")
 else:
-    print("WARN: AI Model or Scaler not found. AI features disabled.")
+    print("WARN: AI Model not found. AI features disabled.")
 
 CLASS_NAMES = {0: "Normal/AC", 1: "Footsteps", 2: "Sabotage/Maintenance", 3: "Vehicle", 4: "Earthquake"}
 CLASS_RISK_MAP = {0: "low", 1: "low", 2: "high", 3: "medium", 4: "high"}
@@ -480,23 +478,45 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
         _ai_buffers[device_id] = []
     _ai_buffers[device_id].append(magnitude)
     
-    # Trigger AI if buffer is full (N=50)
-    if len(_ai_buffers[device_id]) >= 50:
-        if ai_model and ai_scaler:
+    # Trigger AI if buffer is full (N=10)
+    if len(_ai_buffers[device_id]) >= 10:
+        if ai_model:
             try:
-                signal = np.array(_ai_buffers[device_id])
-                features = extract_features_from_signal(signal)
-                features_scaled = ai_scaler.transform([features])
-                probs = ai_model.predict_proba(features_scaled)[0]
-                pred_class = int(ai_model.predict(features_scaled)[0])
-                max_prob = float(np.max(probs))
+                sig = np.array(_ai_buffers[device_id], dtype=float)
                 
-                if max_prob < 0.60:
-                    metadata = {"ai_label": "Unknown", "ai_confidence": max_prob, "ai_fallback": True, "ai_window_size": 50}
+                sig_min = np.min(sig)
+                sig_max = np.max(sig)
+                range_g = sig_max - sig_min
+                
+                # If the vibration variation is microscopic (< 0.02 g), the sensor is at rest.
+                # Do not amplify the quantization noise.
+                if range_g < 0.02:
+                    metadata = {"ai_label": "Normal/AC", "ai_confidence": 1.0, "ai_fallback": False, "ai_window_size": 10}
                     final_risk = conventional_risk
                 else:
-                    metadata = {"ai_label": CLASS_NAMES.get(pred_class, "Unknown"), "ai_confidence": max_prob, "ai_fallback": False, "ai_window_size": 50}
-                    final_risk = CLASS_RISK_MAP.get(pred_class, conventional_risk)
+                    if sig_max > sig_min:
+                        sig = 2.0 * (sig - sig_min) / range_g - 1.0
+                    else:
+                        sig = np.zeros_like(sig)
+                        
+                    # Resample from ~100 Hz to 22050 Hz to match audio domain
+                    duration = len(sig) / 100.0
+                    target_points = int(duration * 22050)
+                    sig_resampled = scipy_signal.resample(sig, target_points)
+                    
+                    features = extract_features_from_signal(sig_resampled)
+                    features_scaled = [features] # No StandardScaler anymore
+                    
+                    probs = ai_model.predict_proba(features_scaled)[0]
+                    pred_class = int(ai_model.predict(features_scaled)[0])
+                    max_prob = float(np.max(probs))
+                    
+                    if max_prob < 0.60:
+                        metadata = {"ai_label": "Unknown", "ai_confidence": max_prob, "ai_fallback": True, "ai_window_size": 10}
+                        final_risk = conventional_risk
+                    else:
+                        metadata = {"ai_label": CLASS_NAMES.get(pred_class, "Unknown"), "ai_confidence": max_prob, "ai_fallback": False, "ai_window_size": 10}
+                        final_risk = CLASS_RISK_MAP.get(pred_class, conventional_risk)
             except Exception as e:
                 print(f"  -> AI PREDICTION ERROR: {e}")
                 metadata = {"ai_fallback": True, "error": str(e)}

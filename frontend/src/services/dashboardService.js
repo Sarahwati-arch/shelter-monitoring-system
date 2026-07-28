@@ -118,21 +118,24 @@ export const dashboardService = {
       : null
 
     const now = Date.now()
-    const tempAge = tempData ? now - new Date(tempData.timestamp).getTime() : Infinity
-    const vibAge = vibData ? now - new Date(vibData.timestamp).getTime() : Infinity
+    const tempTimestamp = tempData ? new Date(tempData.timestamp).getTime() : 0
+    const vibTimestamp = vibData ? new Date(vibData.timestamp).getTime() : 0
+    
+    const tempAge = tempData ? now - tempTimestamp : Infinity
+    const vibAge = vibData ? now - vibTimestamp : Infinity
 
     const isTempFresh = tempAge < 5000 // 5 seconds
     const isVibFresh = vibAge < 5000
 
     return {
+      timestamp: tempTimestamp > vibTimestamp ? tempData?.timestamp : vibData?.timestamp,
       temperature: isTempFresh ? (tempData?.temperature || 0) : null,
       humidity: isTempFresh ? (tempData?.humidity || 0) : null,
-      vibration: isVibFresh ? vibrationMagnitude : null,
       risk_level: tempData?.risk_level || vibData?.risk_level || 'low',
       temp_risk_level: isTempFresh ? (tempData?.risk_level || 'low') : 'offline',
+      vibration: isVibFresh ? vibrationMagnitude : null,
       vib_risk_level: isVibFresh ? (vibData?.risk_level || 'low') : 'offline',
-      vibration_metadata: isVibFresh ? (vibData?.metadata || {}) : {},
-      timestamp: (tempData?.timestamp || vibData?.timestamp) || null
+      vibration_metadata: isVibFresh ? (vibData?.metadata || {}) : {}
     }
   },
 

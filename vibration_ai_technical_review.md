@@ -157,8 +157,8 @@ The system extracts exactly **14 features** from a 1D magnitude array of length 
 
 ### 12. Libraries and Dependencies
 * **`librosa`**: Required exclusively to compute the Zero Crossing Rate (ZCR). It is a heavyweight audio library, used here because vibration data behaves similarly to audio signals.
-* **`scikit-learn`**: Provides the core ML pipeline: `StandardScaler` for normalization and `RandomForestClassifier` for inference.
-* **`numpy` & `scipy`**: Used heavily in `extract_features_from_signal()` to perform fast mathematical aggregations (RMS, Kurtosis, Skewness, MAD) over the vibration arrays.
+* **`scikit-learn`**: Provides the core ML pipeline: `RandomForestClassifier` for inference. (Note: `StandardScaler` was removed in favor of native Min-Max scaling to map raw data to `[-1, 1]`).
+* **`numpy` & `scipy`**: `numpy` is used heavily for mathematical aggregations (RMS, Kurtosis, Skewness), and `scipy.signal` is used to resample the live signal to 22050Hz to match the audio training domain.
 * **`paho-mqtt`**: Handles all TCP/MQTT socket connections, subscriptions, and connection loss recoveries.
 * **`supabase`**: The official Python client for executing REST queries against the PostgreSQL database.
 * **`joblib`**: A highly efficient serialization library used to load the pre-trained Random Forest model faster than standard `pickle`.
@@ -167,6 +167,7 @@ The system extracts exactly **14 features** from a 1D magnitude array of length 
 
 ### 13. Error Handling
 * **Missing AI Model:** If `.pkl` files are missing on boot, the script sets `ai_model = None` and prints a warning, gracefully degrading into fallback mode rather than crashing.
+* **Quantization Noise Bypass:** A physical hardware heuristic checks the variation in the buffer. If `range_g < 0.02g`, the sensor is resting. The pipeline bypasses AI inference entirely and hardcodes `Normal/AC`, preventing the Min-Max scaler from artificially amplifying baseline noise into chaotic signals.
 * **Prediction Failures:** The actual inference is wrapped in a `try/except Exception as e:` block. If feature extraction or prediction crashes (e.g. invalid `NaN` signal), it logs the error, flags `ai_fallback = True`, and defaults to threshold-based risk calculation.
 * **MQTT Failures:** The `paho-mqtt` client utilizes `loop_forever()` which handles automatic reconnections upon network drops (`on_disconnect`).
 * **Database Desync:** The `try_insert()` pairing mechanism discards data if an Accel or Gyro reading is older than 3 seconds, preventing stale data from causing inaccurate magnitude calculations.
@@ -176,7 +177,7 @@ The system extracts exactly **14 features** from a 1D magnitude array of length 
 ### 14. Performance Considerations
 * **Bottleneck (Synchronous Processing):** The `on_message` callback blocks the MQTT network thread. Running `extract_features_from_signal()` (especially `librosa.zero_crossing_rate`) and Random Forest inference synchronously inside this callback could cause MQTT message queue backups if hundreds of devices send data simultaneously.
 * **Memory Leaks:** The `_ai_buffers` and `_buffers` dictionaries store data based on `device_id`. If a device ID suddenly goes offline permanently, its partial buffer will remain in memory forever. A cleanup job/TTL for inactive devices is missing.
-* **Optimizations Made:** The implementation heavily utilizes caching (`_device_cache_ttl = 300s`, `_threshold_cache_ttl = 300s`) to drastically reduce the number of HTTP requests made to Supabase per MQTT message.
+* **Optimizations Made:** The implementation utilizes caching (`_device_cache_ttl = 300s`, `_threshold_cache_ttl = 300s`) to reduce Supabase API calls. Additionally, the physical threshold bypass prevents wasting CPU cycles on silent periods. The AI buffer size was also reduced from 50 to 10 samples, lowering the time-to-alert from ~50 seconds to ~10 seconds.
 
 ---
 

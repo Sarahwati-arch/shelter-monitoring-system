@@ -480,28 +480,38 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
         _ai_buffers[device_id] = []
     _ai_buffers[device_id].append(magnitude)
     
-    # Trigger AI if buffer is full (N=50)
-    if len(_ai_buffers[device_id]) >= 50:
+    # Trigger AI if buffer is full (N=10)
+    if len(_ai_buffers[device_id]) >= 10:
         if ai_model and ai_scaler:
             try:
                 signal = np.array(_ai_buffers[device_id])
-                features = extract_features_from_signal(signal)
-                features_scaled = ai_scaler.transform([features])
-                probs = ai_model.predict_proba(features_scaled)[0]
-                pred_class = int(ai_model.predict(features_scaled)[0])
-                max_prob = float(np.max(probs))
                 
-                if max_prob < 0.60:
-                    metadata = {"ai_label": "Unknown", "ai_confidence": max_prob, "ai_fallback": True, "ai_window_size": 50}
+                sig_min = np.min(signal)
+                sig_max = np.max(signal)
+                range_g = sig_max - sig_min
+                
+                # If vibration variation is microscopic, bypass AI completely
+                if range_g < 0.02:
+                    metadata = {"ai_label": "Normal/AC", "ai_confidence": 1.0, "ai_fallback": False, "ai_window_size": 10}
                     final_risk = conventional_risk
                 else:
-                    metadata = {"ai_label": CLASS_NAMES.get(pred_class, "Unknown"), "ai_confidence": max_prob, "ai_fallback": False, "ai_window_size": 50}
-                    final_risk = CLASS_RISK_MAP.get(pred_class, conventional_risk)
+                    features = extract_features_from_signal(signal)
+                    features_scaled = ai_scaler.transform([features])
+                    probs = ai_model.predict_proba(features_scaled)[0]
+                    pred_class = int(ai_model.predict(features_scaled)[0])
+                    max_prob = float(np.max(probs))
+                    
+                    if max_prob < 0.60:
+                        metadata = {"ai_label": "Unknown", "ai_confidence": max_prob, "ai_fallback": True, "ai_window_size": 10}
+                        final_risk = conventional_risk
+                    else:
+                        metadata = {"ai_label": CLASS_NAMES.get(pred_class, "Unknown"), "ai_confidence": max_prob, "ai_fallback": False, "ai_window_size": 10}
+                        final_risk = CLASS_RISK_MAP.get(pred_class, conventional_risk)
             except Exception as e:
                 print(f"  -> AI PREDICTION ERROR: {e}")
-                metadata = {"ai_fallback": True, "error": str(e)}
+                metadata = {"ai_fallback": True, "error": str(e), "ai_window_size": 10}
         else:
-            metadata = {"ai_fallback": True, "reason": "Model not loaded"}
+            metadata = {"ai_fallback": True, "reason": "Model not loaded", "ai_window_size": 10}
             
         # Update cache
         _last_ai_metadata[device_id] = metadata

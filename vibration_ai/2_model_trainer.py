@@ -4,6 +4,7 @@ import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,14 +39,18 @@ def main():
         X, y, sources, test_size=0.2, stratify=stratify_key, random_state=42
     )
     
+    print("Scaling features...")
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
     # Train RandomForestClassifier
-    # (No blanket scaling since per-source raw signal normalization was applied)
     print("Training RandomForest model...")
     model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
+    model.fit(X_train_scaled, y_train)
     
     # Predict on test data
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(X_test_scaled)
     
     # Calculate performance metrics
     acc = accuracy_score(y_test, y_pred)
@@ -77,10 +82,14 @@ def main():
     
     # Export model and report
     model_out_path = os.path.join(models_dir, "vibration_classifier.pkl")
+    scaler_out_path = os.path.join(models_dir, "scaler.pkl")
     report_out_path = os.path.join(models_dir, "evaluation_report.txt")
     
     joblib.dump(model, model_out_path)
     print(f"Model saved to {model_out_path}")
+    
+    joblib.dump(scaler, scaler_out_path)
+    print(f"Scaler saved to {scaler_out_path}")
     
     with open(report_out_path, "w") as f:
         f.write(report_text)

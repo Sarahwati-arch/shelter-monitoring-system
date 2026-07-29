@@ -82,21 +82,23 @@ def extract_from_json_folders(base_dir, class_folders):
                     if isinstance(data, list) and len(data) > 0:
                         sig = np.array(data, dtype=float)
                         
-                        # Min-Max scale to [-1, 1] to match WAV domain
-                        sig_min = np.min(sig)
-                        sig_max = np.max(sig)
-                        if sig_max > sig_min:
-                            sig = 2.0 * (sig - sig_min) / (sig_max - sig_min) - 1.0
+                        # Production mimics exactly 10 raw samples without resampling
+                        if len(sig) >= 10:
+                            for i in range(len(sig) - 9):
+                                window_sig = sig[i:i+10]
+                                windows.append(VibrationWindow(
+                                    signal=window_sig,
+                                    sample_rate=100,
+                                    label=label,
+                                    source="json_sensor"
+                                ))
                         else:
-                            sig = np.zeros_like(sig)
-                            
-                        # Resample from 100 Hz to 22050 Hz to match audio domain
-                        duration = len(sig) / 100.0
-                        target_points = int(duration * 22050)
-                        sig_resampled = scipy_signal.resample(sig, target_points)
-                        
-                        window = VibrationWindow(signal=sig_resampled, sample_rate=22050, label=label, source="json_sensor")
-                        windows.append(window)
+                            windows.append(VibrationWindow(
+                                signal=sig,
+                                sample_rate=100,
+                                label=label,
+                                source="json_sensor"
+                            ))
                 except Exception as e:
                     print(f"Error processing {file_path}: {e}")
                     
@@ -129,7 +131,8 @@ if __name__ == "__main__":
     models_dir = os.path.join(base_dir, "models")
     
     print("Extracting audio windows (internet datasets)...")
-    audio_windows = extract_from_audio_folders(models_dir, class_folders)
+    # audio_windows = extract_from_audio_folders(models_dir, class_folders)
+    audio_windows = []
     
     print("Extracting real-life audio and JSON windows...")
     real_life_dir = os.path.join(models_dir, "real_life_datasets")
@@ -139,8 +142,8 @@ if __name__ == "__main__":
     real_audio_windows = extract_from_audio_folders(real_life_dir, real_life_folders)
     real_json_windows = extract_from_json_folders(real_life_dir, real_life_folders)
 
-    # Combine all windows
-    all_windows = audio_windows + real_audio_windows + real_json_windows
+    # Combine all windows (ignoring audio_windows)
+    all_windows = real_audio_windows + real_json_windows
     
     print(f"Processing {len(all_windows)} total unified windows...")
     X_all, y_all, sources_all = process_windows(all_windows)

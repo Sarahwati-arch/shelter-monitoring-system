@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Shield, Users, Sliders, Settings, MapPin, Plus, Loader2, AlertCircle, X, Trash2, AlertTriangle, Timer, UserPlus } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
+import { supabase } from '@/lib/supabase'
 import Pagination from '@/components/ui/Pagination'
 import Dropdown from '@/components/ui/Dropdown'
 import EmployeeEnrollment from '@/pages/EmployeeEnrollment'
+import { useAuthStore } from '@/stores/authStore'
+import { Navigate } from 'react-router-dom'
 
 // Sensor interval options (ms -> label)
 const INTERVAL_OPTIONS = [
@@ -638,9 +641,10 @@ function UsersTab() {
 
   // Modal state
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'admin' })
-  const [formError, setFormError] = useState('')
   const [formSaving, setFormSaving] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [progressStep, setProgressStep] = useState('')
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'admin' })
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -668,6 +672,7 @@ function UsersTab() {
   const openModal = () => {
     setForm({ name: '', email: '', password: '', role: 'admin' })
     setFormError('')
+    setProgressStep('')
     setShowModal(true)
   }
 
@@ -685,14 +690,43 @@ function UsersTab() {
     }
 
     setFormSaving(true)
+    setProgressStep('Mendapatkan token autentikasi...')
     try {
-      const newUser = await dashboardService.createUser(form)
+      const token = useAuthStore.getState().token
+      
+      if (!token) {
+        throw new Error('Anda belum login atau sesi telah kedaluwarsa.')
+      }
+
+      setProgressStep('Mengirim request ke Edge Function...')
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(form)
+      })
+
+      setProgressStep('Menunggu respons dari server...')
+      if (!response.ok) {
+        const errText = await response.text()
+        throw new Error(`Edge Function Error (${response.status}): ${errText}`)
+      }
+
+      setProgressStep('Memproses respons...')
+      const newUser = await response.json()
+      
+      if (!newUser) {
+        throw new Error('Tidak ada data yang dikembalikan dari Edge Function')
+      }
       setUsers((prev) => [newUser, ...prev])
       setShowModal(false)
     } catch (err) {
-      setFormError(err.message || 'Failed to create user.')
+      setFormError(err.message || 'Gagal menambahkan user.')
     } finally {
       setFormSaving(false)
+      setProgressStep('')
     }
   }
 
@@ -815,11 +849,21 @@ function UsersTab() {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary flex-1"
+                  className="btn btn-primary flex-1 relative"
                   disabled={formSaving}
                 >
                   {formSaving ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</>
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> 
+                        <span>Creating…</span>
+                      </div>
+                      {progressStep && (
+                        <span className="text-[10px] font-medium text-primary-200 mt-1 truncate max-w-[200px]">
+                          {progressStep}
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     'Create User'
                   )}
@@ -863,8 +907,13 @@ function SystemTab() {
 }
 
 export default function Admin() {
+  const profile = useAuthStore((state) => state.profile)
   const [activeTab, setActiveTab] = useState('shelters')
   const [mountedTabs, setMountedTabs] = useState({ shelters: true })
+
+  if (profile?.role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)

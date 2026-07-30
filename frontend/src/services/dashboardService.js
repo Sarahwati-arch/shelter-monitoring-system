@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 
-const TIMEOUT_MS = 10000 // 10 seconds
+const TIMEOUT_MS = Number(import.meta.env.VITE_SUPABASE_TIMEOUT_MS) || 30000 // 30 seconds default
 
 const withTimeout = (promise) => {
   return Promise.race([
@@ -424,11 +424,18 @@ export const dashboardService = {
    * Create a new user (calls Edge Function to use service role key securely)
    */
   async createUser({ name, email, password, role }) {
-    const { data, error } = await supabase.functions.invoke('create-user', {
-      body: { name, email, password, role }
-    })
-    if (error) throw error
-    return data
+    console.log('Sending invoke request for create-user...')
+    try {
+      const result = await supabase.functions.invoke('create-user', {
+        body: { name, email, password, role }
+      })
+      console.log('Invoke request finished with result:', result)
+      if (result.error) throw result.error
+      return result.data
+    } catch (err) {
+      console.error('Invoke error:', err)
+      throw err
+    }
   },
 
   /**
@@ -545,7 +552,7 @@ export const dashboardService = {
 
 // Wrap all methods in dashboardService with the timeout
 Object.keys(dashboardService).forEach(key => {
-  if (typeof dashboardService[key] === 'function') {
+  if (typeof dashboardService[key] === 'function' && key !== 'createUser') {
     const originalMethod = dashboardService[key]
     dashboardService[key] = function (...args) {
       return withTimeout(originalMethod.apply(this, args))

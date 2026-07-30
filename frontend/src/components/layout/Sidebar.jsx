@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Activity,
   FileText,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { cn } from '@/utils/helpers'
 import { useAuthStore } from '@/stores/authStore'

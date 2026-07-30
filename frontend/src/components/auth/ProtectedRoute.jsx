@@ -16,11 +16,9 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" replace />
   }
 
-  if (profile && profile.role !== 'admin') {
-    // If user is logged in but not an admin, they shouldn't be here based on the requirement
-    // But for safety, we can redirect or show access denied
-    return <Navigate to="/login" replace />
-  }
+  // NOTE: Admin-only route protection should be handled in a separate AdminRoute wrapper
+  // or at the component level to allow technicians to access their permitted routes.
+
 
   return <Outlet />
 }

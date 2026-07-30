@@ -66,22 +66,22 @@ export default function AuditLogs() {
     const matchesAction = actionFilter === 'ALL' || log.action === actionFilter
     const searchLower = searchTerm.toLowerCase()
     const matchesSearch = 
-      (log.users?.name?.toLowerCase().includes(searchLower)) ||
-      (log.users?.email?.toLowerCase().includes(searchLower)) ||
-      (log.table_name?.toLowerCase().includes(searchLower)) ||
-      (log.action?.toLowerCase().includes(searchLower))
+      (log.users?.name?.toLowerCase()?.includes(searchLower)) ||
+      (log.users?.email?.toLowerCase()?.includes(searchLower)) ||
+      (log.table_name?.toLowerCase()?.includes(searchLower)) ||
+      (log.action?.toLowerCase()?.includes(searchLower))
       
     return matchesAction && matchesSearch
   })
 
   const getActionColor = (action) => {
     switch(action) {
-      case 'INSERT': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-      case 'UPDATE': return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-      case 'DELETE': return 'bg-red-500/10 text-red-400 border-red-500/20'
-      case 'LOGIN': return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-      case 'LOGOUT': return 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-      default: return 'bg-surface-700 text-surface-200 border-surface-600'
+      case 'INSERT': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+      case 'UPDATE': return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+      case 'DELETE': return 'bg-red-500/10 text-red-500 border-red-500/20'
+      case 'LOGIN': return 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+      case 'LOGOUT': return 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+      default: return 'bg-surface-700/10 text-surface-500 border-surface-500/20'
     }
   }
 
@@ -98,36 +98,36 @@ export default function AuditLogs() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-[fade-in_0.3s_ease-out]">
       {/* Header section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
-            <FileText className="h-6 w-6 text-primary-400" />
+          <h1 className="text-2xl font-semibold text-surface-900 dark:text-white flex items-center gap-2">
+            <FileText className="h-6 w-6 text-primary-500" />
             Audit Logs
           </h1>
-          <p className="mt-1 text-sm text-surface-400">
+          <p className="mt-1 text-sm text-surface-500">
             Track user activities and data modifications across the system.
           </p>
         </div>
         
         {/* Filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="h-4 w-4 text-surface-400" />
-            </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center glass-card p-2 px-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-500" />
             <input
               type="text"
-              className="block w-full rounded-xl border-0 bg-surface-800/50 py-2 pl-10 pr-3 text-sm text-white ring-1 ring-inset ring-surface-700/50 placeholder:text-surface-400 focus:ring-2 focus:ring-inset focus:ring-primary-500 sm:w-64"
+              className="input pl-9 text-sm border-none shadow-none focus:ring-0 bg-transparent h-9"
               placeholder="Search user, table, or action..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           
+          <div className="h-4 w-px bg-surface-800/30 hidden sm:block"></div>
+          
           <select
-            className="block rounded-xl border-0 bg-surface-800/50 py-2 pl-3 pr-8 text-sm text-white ring-1 ring-inset ring-surface-700/50 focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            className="input text-sm border-none shadow-none focus:ring-0 bg-transparent py-1 pl-2 pr-8 h-9 text-surface-500 cursor-pointer"
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
           >
@@ -143,34 +143,34 @@ export default function AuditLogs() {
 
       {error && (
         <div className="rounded-xl bg-red-500/10 p-4 border border-red-500/20">
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-red-500">{error}</p>
         </div>
       )}
 
       {/* Logs Table */}
-      <div className="overflow-hidden rounded-2xl bg-surface-900/50 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
+      <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-white/5">
+          <table className="w-full">
             <thead>
-              <tr className="bg-surface-800/30">
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-surface-400">
-                  <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> Time</div>
+              <tr className="border-b border-surface-800/50">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-400">
+                  Time
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-surface-400">
-                  <div className="flex items-center gap-2"><User className="h-4 w-4" /> User</div>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-400">
+                  User
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-surface-400">
-                  <div className="flex items-center gap-2"><Activity className="h-4 w-4" /> Action</div>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-400">
+                  Action
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-surface-400">
-                  <div className="flex items-center gap-2"><Database className="h-4 w-4" /> Target Table</div>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-400">
+                  Target Table
                 </th>
-                <th scope="col" className="relative px-6 py-4">
+                <th scope="col" className="px-4 py-3">
                   <span className="sr-only">Details</span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 bg-transparent">
+            <tbody className="divide-y divide-surface-800/30">
               {loading ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-12 text-center text-sm text-surface-400">
@@ -196,10 +196,10 @@ export default function AuditLogs() {
                       )}
                       onClick={() => toggleRow(log.log_id)}
                     >
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-surface-300">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-surface-300">
                         {new Date(log.timestamp).toLocaleString()}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="whitespace-nowrap px-4 py-3">
                         <div className="flex items-center">
                           <div className="h-8 w-8 flex-shrink-0 rounded-full bg-surface-700 flex items-center justify-center border border-surface-600">
                             <User className="h-4 w-4 text-surface-300" />
@@ -210,15 +210,15 @@ export default function AuditLogs() {
                           </div>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border", getActionColor(log.action))}>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold border", getActionColor(log.action))}>
                           {log.action}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-surface-300">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-surface-300">
                         {log.table_name || '-'}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium">
                         {(log.old_values || log.new_values) && (
                           <button className="text-surface-400 hover:text-primary-400 transition-colors">
                             {expandedRow === log.log_id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -230,11 +230,11 @@ export default function AuditLogs() {
                     {/* Expanded Detail Row */}
                     {expandedRow === log.log_id && (log.old_values || log.new_values) && (
                       <tr className="bg-surface-900/80">
-                        <td colSpan="5" className="px-6 py-4">
+                        <td colSpan="5" className="px-4 py-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {log.old_values && (
                               <div className="rounded-lg bg-surface-950 p-4 border border-surface-800">
-                                <h4 className="text-xs font-semibold text-red-400 mb-2 uppercase tracking-wider">Previous Values</h4>
+                                <h4 className="text-[10px] font-semibold text-red-400 mb-2 uppercase tracking-wider">Previous Values</h4>
                                 <pre className="text-xs text-surface-300 overflow-x-auto p-2 bg-black/40 rounded-md border border-white/5">
                                   {JSON.stringify(log.old_values, null, 2)}
                                 </pre>
@@ -242,7 +242,7 @@ export default function AuditLogs() {
                             )}
                             {log.new_values && (
                               <div className="rounded-lg bg-surface-950 p-4 border border-surface-800">
-                                <h4 className="text-xs font-semibold text-emerald-400 mb-2 uppercase tracking-wider">New Values</h4>
+                                <h4 className="text-[10px] font-semibold text-emerald-400 mb-2 uppercase tracking-wider">New Values</h4>
                                 <pre className="text-xs text-surface-300 overflow-x-auto p-2 bg-black/40 rounded-md border border-white/5">
                                   {JSON.stringify(log.new_values, null, 2)}
                                 </pre>

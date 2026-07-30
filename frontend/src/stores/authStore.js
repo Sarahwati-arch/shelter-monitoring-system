@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 export const useAuthStore = create((set, get) => ({
   user: null,
   profile: null,
+  token: null,
   loading: true,
   initialized: false,
   _authSubscription: null,
@@ -35,7 +36,7 @@ export const useAuthStore = create((set, get) => ({
       const { data: { session } } = await supabase.auth.getSession()
       
       if (session) {
-        set({ user: session.user })
+        set({ user: session.user, token: session.access_token })
         const { data: profile } = await supabase
           .from('users')
           .select('*')
@@ -56,7 +57,7 @@ export const useAuthStore = create((set, get) => ({
       if (event === 'INITIAL_SESSION') return
 
       if (session) {
-        set({ user: session.user })
+        set({ user: session.user, token: session.access_token })
         const { data: profile } = await supabase
           .from('users')
           .select('*')
@@ -64,7 +65,7 @@ export const useAuthStore = create((set, get) => ({
           .single()
         set({ profile })
       } else {
-        set({ user: null, profile: null })
+        set({ user: null, profile: null, token: null })
       }
       set({ loading: false })
     })
@@ -95,8 +96,11 @@ export const useAuthStore = create((set, get) => ({
   },
 
   signOut: async () => {
+    const { error: rpcError } = await supabase.rpc('log_user_action', { p_action: 'LOGOUT' })
+    if (rpcError) console.error('Error logging logout:', rpcError)
+    
     await supabase.auth.signOut()
-    set({ user: null, profile: null })
+    set({ user: null, profile: null, token: null })
   }
 }))
 

@@ -56,8 +56,7 @@ export default function Header({ title, setMobileMenuOpen }) {
 
   const handleLogout = async () => {
     setShowUserMenu(false) // Instant visual feedback
-    // Perform sign out without blocking navigation
-    signOut().catch(console.error)
+    await signOut().catch(console.error)
     navigate('/login')
   }
 

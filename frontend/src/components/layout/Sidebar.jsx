@@ -11,9 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
-  FileSpreadsheet,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/utils/helpers'
+import { useAuthStore } from '@/stores/authStore'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -21,12 +22,19 @@ const navigation = [
   { name: 'Evidence', href: '/evidence', icon: Camera },
   { name: 'Devices', href: '/devices', icon: Cpu },
   { name: 'Reports', href: '/reports', icon: FileSpreadsheet },
-  { name: 'Admin', href: '/admin', icon: Shield },
+  { name: 'Admin', href: '/admin', icon: Shield, adminOnly: true },
+  { name: 'Audit Logs', href: '/audit-logs', icon: FileText, adminOnly: true },
   { name: 'Profile', href: '/profile', icon: User },
 ]
 
 export default function Sidebar({ collapsed, setCollapsed, mobileMenuOpen }) {
   const location = useLocation()
+  const profile = useAuthStore((state) => state.profile)
+
+  const filteredNav = navigation.filter(item => {
+    if (item.adminOnly && profile?.role !== 'admin') return false;
+    return true;
+  })
 
   return (
     <aside
@@ -51,7 +59,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileMenuOpen }) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {navigation.map((item) => {
+        {filteredNav.map((item) => {
           const isActive =
             item.href === '/'
               ? location.pathname === '/'

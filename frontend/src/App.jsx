@@ -9,6 +9,7 @@ import Devices from '@/pages/Devices'
 import Admin from '@/pages/Admin'
 import Profile from '@/pages/Profile'
 import Reports from '@/pages/Reports'
+import AuditLogs from '@/pages/AuditLogs'
 import Login from '@/pages/Login'
 import ResetPassword from '@/pages/ResetPassword'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/evidence" element={<Evidence />} />
             <Route path="/devices" element={<Devices />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/audit-logs" element={<AuditLogs />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/profile" element={<Profile />} />
           </Route>

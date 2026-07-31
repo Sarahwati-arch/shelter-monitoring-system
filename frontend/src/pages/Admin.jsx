@@ -879,6 +879,63 @@ function UsersTab() {
 
 
 function SystemTab() {
+  const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState({ dbConnected: false, mqttActive: false })
+  const [settings, setSettings] = useState({})
+  
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editForm, setEditForm] = useState({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const fetchData = async () => {
+    try {
+      const [sysStatus, sysSettings] = await Promise.all([
+        dashboardService.checkSystemStatus(),
+        dashboardService.getSystemSettings()
+      ])
+      setStatus(sysStatus)
+      setSettings(sysSettings || {})
+    } catch (err) {
+      console.error('Error fetching system data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+    const interval = setInterval(fetchData, 30000) // refresh every 30s
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleUpdateSettings = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      const updates = {
+        retention_sensor_data_days: parseInt(editForm.retention_sensor_data_days, 10),
+        retention_alerts_days: parseInt(editForm.retention_alerts_days, 10),
+        retention_evidence_days: parseInt(editForm.retention_evidence_days, 10),
+        telegram_bot_active: editForm.telegram_bot_active
+      }
+      await dashboardService.updateSystemSettings(updates)
+      setSettings(prev => ({ ...prev, ...updates }))
+      setShowEditModal(false)
+    } catch (err) {
+      console.error('Error updating settings:', err)
+      alert('Failed to update system settings: ' + err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) return <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary-500" />
+
+  const sensorDays = settings.retention_sensor_data_days || 90
+  const alertsDays = settings.retention_alerts_days || 365
+  const evidenceDays = settings.retention_evidence_days || 180
+  const isTgActive = settings.telegram_bot_active || false
+
   return (
     <div className="space-y-4">
       <div className="glass-card p-5">
@@ -886,22 +943,138 @@ function SystemTab() {
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg bg-surface-900/50 p-3">
             <p className="text-[10px] uppercase tracking-wider text-surface-500">Database</p>
-            <p className="text-sm font-semibold text-emerald-400">● Connected</p>
+            {status.dbConnected ? (
+              <p className="text-sm font-semibold text-emerald-400">● Connected</p>
+            ) : (
+              <p className="text-sm font-semibold text-red-400">○ Disconnected</p>
+            )}
           </div>
           <div className="rounded-lg bg-surface-900/50 p-3">
             <p className="text-[10px] uppercase tracking-wider text-surface-500">MQTT Broker</p>
-            <p className="text-sm font-semibold text-surface-500">○ Not configured</p>
+            {status.mqttActive ? (
+              <p className="text-sm font-semibold text-emerald-400">● Active</p>
+            ) : (
+              <p className="text-sm font-semibold text-surface-500">○ Inactive / No recent data</p>
+            )}
           </div>
           <div className="rounded-lg bg-surface-900/50 p-3">
             <p className="text-[10px] uppercase tracking-wider text-surface-500">Telegram Bot</p>
-            <p className="text-sm font-semibold text-surface-500">○ Not configured</p>
+            {isTgActive ? (
+              <p className="text-sm font-semibold text-emerald-400">● Configured</p>
+            ) : (
+              <p className="text-sm font-semibold text-surface-500">○ Not configured</p>
+            )}
           </div>
         </div>
       </div>
+      
       <div className="glass-card p-5">
-        <h3 className="mb-3 text-sm font-semibold text-surface-200">Data Retention</h3>
-        <p className="text-xs text-surface-400">Sensor data: 90 days • Alerts: 1 year • Evidence: 6 months</p>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-surface-200">Data Retention</h3>
+          <button 
+            className="btn btn-ghost py-1 text-xs"
+            onClick={() => {
+              setEditForm({
+                retention_sensor_data_days: sensorDays,
+                retention_alerts_days: alertsDays,
+                retention_evidence_days: evidenceDays,
+                telegram_bot_active: isTgActive
+              })
+              setShowEditModal(true)
+            }}
+          >
+            Edit Settings
+          </button>
+        </div>
+        <p className="text-xs text-surface-400">
+          Sensor data: {sensorDays} days • Alerts: {alertsDays} days • Evidence: {evidenceDays} days
+        </p>
       </div>
+
+      {/* Edit System Settings Modal */}
+      {showEditModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowEditModal(false)}
+        >
+          <div
+            className="glass-card w-full max-w-md p-6 animate-[slide-up_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-surface-200">System Settings</h2>
+              <button onClick={() => setShowEditModal(false)} className="text-surface-500 hover:text-surface-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateSettings} className="space-y-4">
+              <div className="space-y-3 border-b border-surface-700/50 pb-4">
+                <h4 className="text-xs font-semibold text-surface-300 uppercase tracking-wider">Data Retention (Days)</h4>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Sensor Data (Temperature, Vibration)</label>
+                  <input
+                    type="number" min="1" required
+                    value={editForm.retention_sensor_data_days}
+                    onChange={(e) => setEditForm({ ...editForm, retention_sensor_data_days: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">Alerts</label>
+                  <input
+                    type="number" min="1" required
+                    value={editForm.retention_alerts_days}
+                    onChange={(e) => setEditForm({ ...editForm, retention_alerts_days: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-surface-400">CCTV Evidence</label>
+                  <input
+                    type="number" min="1" required
+                    value={editForm.retention_evidence_days}
+                    onChange={(e) => setEditForm({ ...editForm, retention_evidence_days: e.target.value })}
+                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-semibold text-surface-300 uppercase tracking-wider">Integrations</h4>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="tg-active"
+                    checked={editForm.telegram_bot_active}
+                    onChange={(e) => setEditForm({ ...editForm, telegram_bot_active: e.target.checked })}
+                    className="rounded border-surface-700 bg-surface-800/50 text-primary-500 focus:ring-primary-500/20"
+                  />
+                  <label htmlFor="tg-active" className="text-sm text-surface-200">Telegram Bot Active</label>
+                </div>
+                <p className="text-[10px] text-surface-500 ml-6">Check this if the bot token is configured in the backend `.env` file.</p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="btn btn-ghost flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn btn-primary flex-1"
+                >
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

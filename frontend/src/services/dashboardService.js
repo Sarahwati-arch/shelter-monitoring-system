@@ -408,6 +408,71 @@ export const dashboardService = {
   },
 
   /**
+   * Get system settings
+   */
+  async getSystemSettings() {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('*')
+    if (error) throw error
+    
+    const settings = {}
+    if (data) {
+      data.forEach(item => {
+        settings[item.key] = item.value
+      })
+    }
+    return settings
+  },
+
+  /**
+   * Update system settings
+   */
+  async updateSystemSettings(updates) {
+    const promises = Object.entries(updates).map(([key, value]) => {
+      return supabase
+        .from('system_settings')
+        .update({ value })
+        .eq('key', key)
+    })
+    
+    await Promise.all(promises)
+    return true
+  },
+
+  /**
+   * Check system status
+   */
+  async checkSystemStatus() {
+    let dbConnected = false
+    let mqttActive = false
+    
+    try {
+      const { error } = await supabase.from('users').select('user_id').limit(1)
+      if (!error) dbConnected = true
+    } catch (e) {
+      console.error('DB connection check failed:', e)
+    }
+
+    try {
+      const fifteenMinsAgo = new Date(Date.now() - 15 * 60000).toISOString()
+      const { data, error } = await supabase
+        .from('devices')
+        .select('last_seen')
+        .gte('last_seen', fifteenMinsAgo)
+        .limit(1)
+      
+      if (!error && data && data.length > 0) {
+        mqttActive = true
+      }
+    } catch (e) {
+      console.error('MQTT status check failed:', e)
+    }
+
+    return { dbConnected, mqttActive }
+  },
+
+  /**
    * Get all users
    */
   async getUsers() {

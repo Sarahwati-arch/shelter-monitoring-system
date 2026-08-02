@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 
-const TIMEOUT_MS = 10000 // 10 seconds
+const TIMEOUT_MS = Number(import.meta.env.VITE_SUPABASE_TIMEOUT_MS) || 30000 // 30 seconds default
 
 const withTimeout = (promise) => {
   return Promise.race([
@@ -118,21 +118,24 @@ export const dashboardService = {
       : null
 
     const now = Date.now()
-    const tempAge = tempData ? now - new Date(tempData.timestamp).getTime() : Infinity
-    const vibAge = vibData ? now - new Date(vibData.timestamp).getTime() : Infinity
+    const tempTimestamp = tempData ? new Date(tempData.timestamp).getTime() : 0
+    const vibTimestamp = vibData ? new Date(vibData.timestamp).getTime() : 0
+    
+    const tempAge = tempData ? now - tempTimestamp : Infinity
+    const vibAge = vibData ? now - vibTimestamp : Infinity
 
     const isTempFresh = tempAge < 5000 // 5 seconds
     const isVibFresh = vibAge < 5000
 
     return {
+      timestamp: tempTimestamp > vibTimestamp ? tempData?.timestamp : vibData?.timestamp,
       temperature: isTempFresh ? (tempData?.temperature || 0) : null,
       humidity: isTempFresh ? (tempData?.humidity || 0) : null,
-      vibration: isVibFresh ? vibrationMagnitude : null,
       risk_level: tempData?.risk_level || vibData?.risk_level || 'low',
       temp_risk_level: isTempFresh ? (tempData?.risk_level || 'low') : 'offline',
+      vibration: isVibFresh ? vibrationMagnitude : null,
       vib_risk_level: isVibFresh ? (vibData?.risk_level || 'low') : 'offline',
-      vibration_metadata: isVibFresh ? (vibData?.metadata || {}) : {},
-      timestamp: (tempData?.timestamp || vibData?.timestamp) || null
+      vibration_metadata: isVibFresh ? (vibData?.metadata || {}) : {}
     }
   },
 
@@ -405,6 +408,71 @@ export const dashboardService = {
   },
 
   /**
+   * Get system settings
+   */
+  async getSystemSettings() {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('*')
+    if (error) throw error
+    
+    const settings = {}
+    if (data) {
+      data.forEach(item => {
+        settings[item.key] = item.value
+      })
+    }
+    return settings
+  },
+
+  /**
+   * Update system settings
+   */
+  async updateSystemSettings(updates) {
+    const promises = Object.entries(updates).map(([key, value]) => {
+      return supabase
+        .from('system_settings')
+        .update({ value })
+        .eq('key', key)
+    })
+    
+    await Promise.all(promises)
+    return true
+  },
+
+  /**
+   * Check system status
+   */
+  async checkSystemStatus() {
+    let dbConnected = false
+    let mqttActive = false
+    
+    try {
+      const { error } = await supabase.from('users').select('user_id').limit(1)
+      if (!error) dbConnected = true
+    } catch (e) {
+      console.error('DB connection check failed:', e)
+    }
+
+    try {
+      const fifteenMinsAgo = new Date(Date.now() - 15 * 60000).toISOString()
+      const { data, error } = await supabase
+        .from('devices')
+        .select('last_seen')
+        .gte('last_seen', fifteenMinsAgo)
+        .limit(1)
+      
+      if (!error && data && data.length > 0) {
+        mqttActive = true
+      }
+    } catch (e) {
+      console.error('MQTT status check failed:', e)
+    }
+
+    return { dbConnected, mqttActive }
+  },
+
+  /**
    * Get all users
    */
   async getUsers() {
@@ -421,11 +489,18 @@ export const dashboardService = {
    * Create a new user (calls Edge Function to use service role key securely)
    */
   async createUser({ name, email, password, role }) {
-    const { data, error } = await supabase.functions.invoke('create-user', {
-      body: { name, email, password, role }
-    })
-    if (error) throw error
-    return data
+    console.log('Sending invoke request for create-user...')
+    try {
+      const result = await supabase.functions.invoke('create-user', {
+        body: { name, email, password, role }
+      })
+      console.log('Invoke request finished with result:', result)
+      if (result.error) throw result.error
+      return result.data
+    } catch (err) {
+      console.error('Invoke error:', err)
+      throw err
+    }
   },
 
   /**
@@ -542,7 +617,7 @@ export const dashboardService = {
 
 // Wrap all methods in dashboardService with the timeout
 Object.keys(dashboardService).forEach(key => {
-  if (typeof dashboardService[key] === 'function') {
+  if (typeof dashboardService[key] === 'function' && key !== 'createUser') {
     const originalMethod = dashboardService[key]
     dashboardService[key] = function (...args) {
       return withTimeout(originalMethod.apply(this, args))

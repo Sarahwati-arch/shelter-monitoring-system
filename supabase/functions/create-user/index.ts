@@ -1,12 +1,11 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -67,6 +66,7 @@ serve(async (req) => {
       email,
       password,
       email_confirm: true, // Skip email confirmation
+      user_metadata: { name, role: role || 'admin' }
     })
 
     if (authError) {
@@ -75,23 +75,20 @@ serve(async (req) => {
       })
     }
 
-    // 4. Insert into users table
-    const { data: newUser, error: insertError } = await supabaseAdmin
+    // 4. Fetch the profile created by the database trigger
+    // Wait briefly for the trigger to complete (usually instant, but just in case)
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    const { data: newUser, error: fetchError } = await supabaseAdmin
       .from('users')
-      .insert({
-        supabase_user_id: authData.user.id,
-        name,
-        email,
-        role: role || 'admin',
-      })
-      .select()
+      .select('*')
+      .eq('supabase_user_id', authData.user.id)
       .single()
 
-    if (insertError) {
-      // Rollback: delete the auth user if profile insert fails
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
-      return new Response(JSON.stringify({ error: insertError.message }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    if (fetchError) {
+      // If we can't find the profile, something went wrong with the trigger
+      return new Response(JSON.stringify({ error: `User created in auth, but failed to retrieve profile: ${fetchError.message}` }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 

@@ -1,22 +1,25 @@
 === EVALUATION REPORT ===
-Accuracy: 0.9750
+Overall Accuracy: 0.9630
 
-Classification Report:
+Per-Source Accuracy:
+Accuracy on json_sensor samples: 0.9630 (838 samples)
+
+Classification Report (includes per-class recall):
               precision    recall  f1-score   support
 
-           0       0.89      1.00      0.94         8
-           1       1.00      0.88      0.93         8
-           2       1.00      1.00      1.00         8
-           3       1.00      1.00      1.00         8
-           4       1.00      1.00      1.00         8
+           0       0.96      0.96      0.96        25
+           1       0.85      0.84      0.84        79
+           2       0.97      0.97      0.97       238
+           3       0.89      0.89      0.89        97
+           4       1.00      1.00      1.00       399
 
-    accuracy                           0.97        40
-   macro avg       0.98      0.97      0.97        40
-weighted avg       0.98      0.97      0.97        40
+    accuracy                           0.96       838
+   macro avg       0.93      0.93      0.93       838
+weighted avg       0.96      0.96      0.96       838
 
 Confusion Matrix:
-[[8 0 0 0 0]
- [1 7 0 0 0]
- [0 0 8 0 0]
- [0 0 0 8 0]
- [0 0 0 0 8]]
+[[ 24   0   1   0   0]
+ [  1  66   3   9   0]
+ [  0   4 232   2   0]
+ [  0   8   3  86   0]
+ [  0   0   0   0 399]]

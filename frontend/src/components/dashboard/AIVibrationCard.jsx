@@ -28,7 +28,7 @@ export default function AIVibrationCard({ latestMetadata, sensorData }) {
         <div className="flex-1 flex flex-col items-center justify-center text-surface-500 text-center py-8">
           <BrainCircuit className="h-8 w-8 mb-3 opacity-20" />
           <p className="text-sm">No AI diagnostics available.</p>
-          <p className="text-xs mt-1">Waiting for data buffer (N=50)...</p>
+          <p className="text-xs mt-1">Waiting for data buffer (N=10)...</p>
         </div>
       ) : (
         <div className="flex-1 flex flex-col gap-6">
@@ -42,7 +42,7 @@ export default function AIVibrationCard({ latestMetadata, sensorData }) {
                     {latestMetadata.ai_label || 'Unknown'}
                   </p>
                   <p className="text-[10px] text-surface-500">
-                    (based on {latestMetadata.ai_window_size || 50} samples)
+                    (based on {latestMetadata.ai_window_size || 10} samples)
                   </p>
                 </div>
               </div>
@@ -53,15 +53,14 @@ export default function AIVibrationCard({ latestMetadata, sensorData }) {
                 </p>
               </div>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="h-2 w-full bg-surface-700 rounded-full overflow-hidden mt-3">
-              <div 
-                className={`h-full rounded-full transition-all duration-1000 ${
-                  latestMetadata.ai_fallback 
-                    ? 'bg-amber-500' 
-                    : 'bg-gradient-to-r from-primary-500 to-purple-500'
-                }`}
+              <div
+                className={`h-full rounded-full transition-all duration-1000 ${latestMetadata.ai_fallback
+                  ? 'bg-amber-500'
+                  : 'bg-gradient-to-r from-primary-500 to-purple-500'
+                  }`}
                 style={{ width: `${Math.min(100, Math.max(0, (latestMetadata.ai_confidence || 0) * 100))}%` }}
               />
             </div>

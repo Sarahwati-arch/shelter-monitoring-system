@@ -56,10 +56,14 @@ export default function Login() {
       // Verify if user is admin
       const profile = await fetchProfile(data.user.id)
 
-      if (!profile || profile.role !== 'admin') {
+      if (!profile || !['admin', 'technician'].includes(profile.role)) {
         await supabase.auth.signOut()
-        throw new Error('Access denied. Only administrators can login.')
+        throw new Error('Access denied. Invalid user role.')
       }
+
+      // Log successful login
+      const { error: rpcError } = await supabase.rpc('log_user_action', { p_action: 'LOGIN' })
+      if (rpcError) console.error('Error logging login:', rpcError)
 
       navigate('/')
     } catch (err) {

@@ -220,6 +220,60 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Audit Log Triggers
+CREATE OR REPLACE FUNCTION process_audit_log()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_user_id UUID;
+    v_old_data JSONB;
+    v_new_data JSONB;
+    v_record_id TEXT;
+    v_pk_col_name TEXT;
+BEGIN
+    BEGIN
+        SELECT user_id INTO v_user_id FROM public.users WHERE supabase_user_id = auth.uid();
+    EXCEPTION WHEN OTHERS THEN
+        v_user_id := NULL;
+    END;
+
+    IF (TG_OP = 'UPDATE') THEN
+        v_old_data := row_to_json(OLD)::jsonb;
+        v_new_data := row_to_json(NEW)::jsonb;
+    ELSIF (TG_OP = 'DELETE') THEN
+        v_old_data := row_to_json(OLD)::jsonb;
+    ELSIF (TG_OP = 'INSERT') THEN
+        v_new_data := row_to_json(NEW)::jsonb;
+    END IF;
+
+    IF array_length(TG_ARGV, 1) > 0 THEN
+        v_pk_col_name := TG_ARGV[0];
+        IF (TG_OP = 'DELETE') THEN
+            v_record_id := v_old_data->>v_pk_col_name;
+        ELSE
+            v_record_id := v_new_data->>v_pk_col_name;
+        END IF;
+    END IF;
+
+    INSERT INTO public.audit_logs (
+        user_id, action, table_name, record_id, old_values, new_values
+    ) VALUES (
+        v_user_id, TG_OP, TG_TABLE_NAME, v_record_id::UUID, v_old_data, v_new_data
+    );
+
+    IF (TG_OP = 'DELETE') THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER audit_users_trigger AFTER INSERT OR UPDATE OR DELETE ON users FOR EACH ROW EXECUTE FUNCTION process_audit_log('user_id');
+CREATE TRIGGER audit_shelters_trigger AFTER INSERT OR UPDATE OR DELETE ON shelters FOR EACH ROW EXECUTE FUNCTION process_audit_log('shelter_id');
+CREATE TRIGGER audit_devices_trigger AFTER INSERT OR UPDATE OR DELETE ON devices FOR EACH ROW EXECUTE FUNCTION process_audit_log('device_id');
+CREATE TRIGGER audit_thresholds_trigger AFTER INSERT OR UPDATE OR DELETE ON thresholds FOR EACH ROW EXECUTE FUNCTION process_audit_log('threshold_id');
+CREATE TRIGGER audit_alerts_trigger AFTER INSERT OR UPDATE OR DELETE ON alerts FOR EACH ROW EXECUTE FUNCTION process_audit_log('alert_id');
+-- Note: 'employees' table is usually created in a separate migration, but we can add its trigger there or here if it exists.
+-- We'll just define the trigger if the table exists, but standard cloud-setup doesn't have employees yet.
+-- To avoid errors when running cloud-setup on a fresh db without employees table, we omit the employees trigger here.
+-- It's included in the 010_audit_triggers.sql migration.
+
 -- ============================================================================
 -- 6. ROW LEVEL SECURITY
 -- ============================================================================

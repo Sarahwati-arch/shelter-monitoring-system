@@ -2,8 +2,7 @@
 #include <MPU6050_light.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <ArduinoJson.h>  // Install via Library Manager: "ArduinoJson" by Benoit Blanchon
-
+#include <ArduinoJson.h>  
 
 // MPU
 MPU6050 mpu(Wire);
@@ -13,15 +12,14 @@ float fax = 0, fay = 0, faz = 0;
 float fgx = 0, fgy = 0, fgz = 0;
 float alpha = 0.1;
 
-// LED & BUZZER PINS
 #define LED_RED    25
 #define LED_YELLOW 26
 #define LED_GREEN  27
 #define BUZZER_PIN 5
 
-// --- VIBRATION THRESHOLDS (local defaults, overridable via MQTT config) ---
-float vibWarning = 0.3;
-float vibCritical = 0.7;
+// VIBRATION THRESHOLDS
+float vibWarning = 1.5;
+float vibCritical = 2.5;
 
 // WIFI & MQTT
 const char* ssid        = "Wifi 2";
@@ -37,23 +35,19 @@ const char* topic_config = "tok_esp32_vib_alpha_001/Config";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+// SENSOR INTERVAL
+unsigned long sensorInterval   = 1000;
 
-// --- SENSOR INTERVAL (ms) — configurable via MQTT ---
-unsigned long sensorInterval   = 1000;   // default 1 detik
-
-// --- NON-BLOCKING TIMERS ---
 unsigned long lastPublishTime  = 0;
 unsigned long previousBuzzerMillis = 0;
 bool buzzerState = false;
 
-// --- STATUS SENSOR SAAT INI ---
 enum StatusLevel { NORMAL, WARNING, CRITICAL };
 StatusLevel currentStatus = NORMAL;
 
+unsigned long statusHoldStart = 0;
+const unsigned long HOLD_DURATION = 3000; 
 
-// ---------------------------------------------------------------------------
-// WiFi
-// ---------------------------------------------------------------------------
 void setup_wifi() {
   WiFi.begin(ssid, password);
   Serial.print("Connecting WiFi");
@@ -64,10 +58,6 @@ void setup_wifi() {
   Serial.println("\nWiFi Connected");
 }
 
-
-// ---------------------------------------------------------------------------
-// MQTT callback — terima config dari bridge
-// ---------------------------------------------------------------------------
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   char buf[128];
   unsigned int len = min(length, (unsigned int)(sizeof(buf) - 1));
@@ -87,7 +77,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     return;
   }
 
-  // Update interval jika ada field "vib_interval_ms"
   if (doc.containsKey("vib_interval_ms")) {
     unsigned long newInterval = doc["vib_interval_ms"].as<unsigned long>();
     if (newInterval >= 1000 && newInterval <= 60000) {
@@ -114,10 +103,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-
-// ---------------------------------------------------------------------------
-// MQTT reconnect
-// ---------------------------------------------------------------------------
 void reconnect() {
   while (!client.connected()) {
     Serial.print("MQTT connecting...");
@@ -134,25 +119,34 @@ void reconnect() {
   }
 }
 
-
-// ---------------------------------------------------------------------------
-// LED & Buzzer status
-// ---------------------------------------------------------------------------
 void updateStatus(float vibLevel) {
-  digitalWrite(LED_GREEN,  LOW);
-  digitalWrite(LED_YELLOW, LOW);
-  digitalWrite(LED_RED,    LOW);
+  StatusLevel rawStatus;
 
   if (vibLevel >= vibCritical) {
-    currentStatus = CRITICAL;
-    digitalWrite(LED_RED, HIGH);
+    rawStatus = CRITICAL;
   } else if (vibLevel >= vibWarning) {
-    currentStatus = WARNING;
-    digitalWrite(LED_YELLOW, HIGH);
+    rawStatus = WARNING;
   } else {
-    currentStatus = NORMAL;
-    digitalWrite(LED_GREEN, HIGH);
+    rawStatus = NORMAL;
   }
+
+  unsigned long now = millis();
+
+  if (rawStatus > currentStatus) {
+    currentStatus = rawStatus;
+    statusHoldStart = now;
+  } else if (rawStatus < currentStatus) {
+    if (now - statusHoldStart >= HOLD_DURATION) {
+      currentStatus = rawStatus;
+      statusHoldStart = now;
+    }
+  } else {
+    statusHoldStart = now;
+  }
+
+  digitalWrite(LED_GREEN,  currentStatus == NORMAL   ? HIGH : LOW);
+  digitalWrite(LED_YELLOW, currentStatus == WARNING  ? HIGH : LOW);
+  digitalWrite(LED_RED,    currentStatus == CRITICAL ? HIGH : LOW);
 }
 
 void handleBuzzer() {
@@ -170,10 +164,6 @@ void handleBuzzer() {
   }
 }
 
-
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -185,7 +175,7 @@ void setup() {
   pinMode(LED_GREEN,  OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   
-  updateStatus(0.0);  // Default: hijau, buzzer mati
+  updateStatus(0.0);
 
   Wire.begin(23, 22, 400000);
 
@@ -204,15 +194,10 @@ void setup() {
   client.setCallback(mqttCallback);
 }
 
-
-// ---------------------------------------------------------------------------
-// Loop — NON-BLOCKING (tidak ada delay() di sini)
-// ---------------------------------------------------------------------------
 void loop() {
   if (!client.connected()) reconnect();
-  client.loop();  // proses incoming MQTT (termasuk Config)
+  client.loop(); 
 
-  // Update filter terus-menerus (tidak bergantung interval publish)
   mpu.update();
 
   float ax = mpu.getAccX();
@@ -230,15 +215,13 @@ void loop() {
   fgy = alpha * gy + (1 - alpha) * fgy;
   fgz = alpha * gz + (1 - alpha) * fgz;
 
-  // Vibration level (untuk LED & Buzzer)
-  float accelMag = sqrt(fax*fax + fay*fay + faz*faz);
-  float gyroMag  = sqrt(fgx*fgx + fgy*fgy + fgz*fgz);
-  float vibLevel = (accelMag + gyroMag) / 2.0;
+  // Vibration level
+  float vibLevel = sqrt(fax*fax + fay*fay + faz*faz);
 
   updateStatus(vibLevel);
   handleBuzzer();
 
-  // NON-BLOCKING TIMER — publish sesuai interval yang dikonfigurasi
+  // NON-BLOCKING TIMER
   unsigned long currentMillis = millis();
   if (currentMillis - lastPublishTime >= sensorInterval) {
     lastPublishTime = currentMillis;

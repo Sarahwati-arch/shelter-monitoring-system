@@ -474,6 +474,20 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
     # Use the last known AI metadata for this device as the base
     metadata = _last_ai_metadata.get(device_id, {}).copy()
     
+    # Inherit risk level from last known AI prediction if it's more severe
+    if not metadata.get("ai_fallback", True):
+        ai_label = metadata.get("ai_label", "Unknown")
+        ai_risk = None
+        for k, v in CLASS_NAMES.items():
+            if v == ai_label:
+                ai_risk = CLASS_RISK_MAP.get(k)
+                break
+        
+        if ai_risk:
+            risk_weight = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+            if risk_weight.get(ai_risk, 0) > risk_weight.get(final_risk, 0):
+                final_risk = ai_risk
+    
     # Calculate magnitude and buffer
     magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
     if device_id not in _ai_buffers:

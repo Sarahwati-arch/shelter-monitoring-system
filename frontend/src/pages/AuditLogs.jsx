@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Shield,
+  RefreshCw
 } from 'lucide-react'
 import { cn } from '@/utils/helpers'
 
@@ -30,11 +31,28 @@ export default function AuditLogs() {
     fetchLogs()
   }, [])
 
-  const fetchLogs = async () => {
-    setLoading(true)
+  // Supabase Realtime for audit logs
+  useEffect(() => {
+    if (profile?.role !== 'admin') return
+
+    const channel = supabase
+      .channel('audit-logs')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'audit_logs'
+      }, () => {
+        // Silently fetch new logs
+        fetchLogs(true)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [profile])
+
+  const fetchLogs = async (silent = false) => {
+    if (!silent) setLoading(true)
     setError('')
     try {
-      const { data, error } = await supabase
+      const fetchPromise = supabase
         .from('audit_logs')
         .select(`
           *,
@@ -47,11 +65,16 @@ export default function AuditLogs() {
         .order('timestamp', { ascending: false })
         .limit(200)
 
+      const { data, error } = await Promise.race([
+        fetchPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 8000))
+      ])
+
       if (error) throw error
       setLogs(data || [])
     } catch (err) {
       console.error('Error fetching audit logs:', err)
-      setError('Failed to load audit logs.')
+      setError(err?.message || JSON.stringify(err) || 'Failed to load audit logs.')
     } finally {
       setLoading(false)
     }
@@ -111,33 +134,44 @@ export default function AuditLogs() {
           </p>
         </div>
         
-        {/* Filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center glass-card p-2 px-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-500" />
-            <input
-              type="text"
-              className="input pl-9 text-sm border-none shadow-none focus:ring-0 bg-transparent h-9"
-              placeholder="Search user, table, or action..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="h-4 w-px bg-surface-800/30 hidden sm:block"></div>
-          
-          <select
-            className="input text-sm border-none shadow-none focus:ring-0 bg-transparent py-1 pl-2 pr-8 h-9 text-surface-500 cursor-pointer"
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
+        {/* Filters & Actions */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            onClick={() => fetchLogs(false)}
+            disabled={loading}
+            className="btn btn-ghost px-3"
+            title="Refresh logs"
           >
-            <option value="ALL">All Actions</option>
-            <option value="LOGIN">Login</option>
-            <option value="LOGOUT">Logout</option>
-            <option value="INSERT">Insert</option>
-            <option value="UPDATE">Update</option>
-            <option value="DELETE">Delete</option>
-          </select>
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          </button>
+          
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center glass-card p-2 px-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-500" />
+              <input
+                type="text"
+                className="input pl-9 text-sm border-none shadow-none focus:ring-0 bg-transparent h-9"
+                placeholder="Search user, table, or action..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="h-4 w-px bg-surface-800/30 hidden sm:block"></div>
+            
+            <select
+              className="input text-sm border-none shadow-none focus:ring-0 bg-transparent py-1 pl-2 pr-8 h-9 text-surface-500 cursor-pointer"
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value)}
+            >
+              <option value="ALL">All Actions</option>
+              <option value="LOGIN">Login</option>
+              <option value="LOGOUT">Logout</option>
+              <option value="INSERT">Insert</option>
+              <option value="UPDATE">Update</option>
+              <option value="DELETE">Delete</option>
+            </select>
+          </div>
         </div>
       </div>
 

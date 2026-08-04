@@ -3,6 +3,8 @@ import { dashboardService } from '@/services/dashboardService'
 import { useState, useEffect, useRef } from 'react'
 import { timeAgo } from '@/utils/helpers'
 import { useAuthStore } from '@/stores/authStore'
+import { useDataStore } from '@/stores/dataStore'
+import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 
 export default function Header({ title, setMobileMenuOpen }) {
@@ -11,8 +13,8 @@ export default function Header({ title, setMobileMenuOpen }) {
   const [isDarkMode, setIsDarkMode] = useState(
     () => document.documentElement.classList.contains('dark')
   )
-  const [openAlerts, setOpenAlerts] = useState([])
 
+  const { openAlerts, openAlertsLoaded, fetchOpenAlerts, addOpenAlert, removeOpenAlert } = useDataStore()
   const notifRef = useRef(null)
   const userMenuRef = useRef(null)
 
@@ -42,16 +44,33 @@ export default function Header({ title, setMobileMenuOpen }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Initial fetch of open alerts (use store cache if available)
   useEffect(() => {
-    async function fetchOpenAlerts() {
-      try {
-        const data = await dashboardService.getAlerts({ status: 'open' })
-        setOpenAlerts(data)
-      } catch (error) {
-        console.error('Error fetching open alerts:', error)
-      }
+    if (!openAlertsLoaded) {
+      fetchOpenAlerts()
     }
-    fetchOpenAlerts()
+  }, [])
+
+  // Supabase Realtime: update bell badge instantly
+  useEffect(() => {
+    const channel = supabase
+      .channel('header-alerts')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'alerts'
+      }, (payload) => {
+        addOpenAlert(payload.new)
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'alerts'
+      }, (payload) => {
+        const updated = payload.new
+        if (updated.status !== 'open') {
+          removeOpenAlert(updated.alert_id)
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   const handleLogout = async () => {

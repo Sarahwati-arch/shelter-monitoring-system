@@ -4,12 +4,12 @@ import Dropdown from '@/components/ui/Dropdown'
 import { dashboardService } from '@/services/dashboardService'
 import { reportService } from '@/services/reportService'
 import { exportToExcel } from '@/utils/exportToExcel'
+import { useDataStore } from '@/stores/dataStore'
 
 export default function Reports() {
-  const [shelters, setShelters] = useState([])
+  const { shelters, sheltersLoaded, fetchShelters } = useDataStore()
   const [selectedShelter, setSelectedShelter] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isFetchingShelters, setIsFetchingShelters] = useState(true)
   const [fetchError, setFetchError] = useState(null)
 
   // Date range states
@@ -24,23 +24,13 @@ export default function Reports() {
   const [endDate, setEndDate] = useState(defaultEndStr)
 
   useEffect(() => {
-    const fetchShelters = async () => {
-      try {
-        setIsFetchingShelters(true)
-        setFetchError(null)
-        const data = await dashboardService.getShelters()
-        setShelters(data)
-        if (data.length > 0) {
-          setSelectedShelter(data[0].shelter_id)
-        }
-      } catch (error) {
-        console.error('Error fetching shelters:', error)
-        setFetchError(error.message)
-      } finally {
-        setIsFetchingShelters(false)
-      }
+    if (!sheltersLoaded) {
+      fetchShelters().then((data) => {
+        if (data.length > 0 && !selectedShelter) setSelectedShelter(data[0].shelter_id)
+      }).catch(err => setFetchError(err.message))
+    } else if (shelters.length > 0 && !selectedShelter) {
+      setSelectedShelter(shelters[0].shelter_id)
     }
-    fetchShelters()
   }, [])
 
   const setPreset = (days) => {
@@ -96,7 +86,7 @@ export default function Reports() {
             onChange={setSelectedShelter}
             options={shelters.map(s => ({ label: s.shelter_name, value: s.shelter_id }))}
             className="w-full"
-            placeholder={isFetchingShelters ? "Loading shelters..." : (shelters.length === 0 ? "No shelters available" : "Select an option")}
+            placeholder={!sheltersLoaded ? "Loading shelters..." : (shelters.length === 0 ? "No shelters available" : "Select an option")}
           />
         </div>
 
@@ -161,7 +151,7 @@ export default function Reports() {
         <div className="pt-4 border-t border-surface-800 flex justify-end">
           <button
             onClick={handleGenerateReport}
-            disabled={isLoading || !selectedShelter || isFetchingShelters || !startDate || !endDate}
+            disabled={isLoading || !selectedShelter || !sheltersLoaded || !startDate || !endDate}
             className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-medium text-white transition-all hover:bg-primary-500 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
           >
             {isLoading ? (

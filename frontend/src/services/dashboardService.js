@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 
-const TIMEOUT_MS = Number(import.meta.env.VITE_SUPABASE_TIMEOUT_MS) || 30000 // 30 seconds default
+const TIMEOUT_MS = Number(import.meta.env.VITE_SUPABASE_TIMEOUT_MS) || 8000 // 8 seconds default
 
 const withTimeout = (promise) => {
   return Promise.race([
@@ -91,23 +91,26 @@ export const dashboardService = {
    * Combines temperature and vibration data
    */
   async getLatestReading(shelterId) {
-    // Fetch latest temperature
-    const { data: tempData, error: tempError } = await supabase
-      .from('temperature_data')
-      .select('*')
-      .eq('shelter_id', shelterId)
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    // Fetch latest temperature + vibration in parallel
+    const [tempRes, vibRes] = await Promise.all([
+      supabase
+        .from('temperature_data')
+        .select('*')
+        .eq('shelter_id', shelterId)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('vibration_data')
+        .select('*')
+        .eq('shelter_id', shelterId)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    ])
 
-    // Fetch latest vibration
-    const { data: vibData, error: vibError } = await supabase
-      .from('vibration_data')
-      .select('*')
-      .eq('shelter_id', shelterId)
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const { data: tempData, error: tempError } = tempRes
+    const { data: vibData, error: vibError } = vibRes
 
     if (tempError) console.error('Error fetching latest temp:', tempError)
     if (vibError) console.error('Error fetching latest vibration:', vibError)
@@ -274,23 +277,26 @@ export const dashboardService = {
    * Get alert counts (total and open)
    */
   async getAlertStats(shelterId) {
-    let query = supabase.from('alerts').select('status', { count: 'exact' })
-    
-    if (shelterId) {
-      query = query.eq('shelter_id', shelterId)
+    // Use parallel DB-level count queries — no need to fetch all rows
+    const baseQuery = () => {
+      let q = supabase.from('alerts').select('*', { count: 'exact', head: true })
+      if (shelterId) q = q.eq('shelter_id', shelterId)
+      return q
     }
 
-    const { data, count, error } = await query
-    
-    if (error) {
-      console.error('Error fetching alert stats:', error)
+    const [totalRes, openRes] = await Promise.all([
+      baseQuery(),
+      baseQuery().eq('status', 'open')
+    ])
+
+    if (totalRes.error) {
+      console.error('Error fetching alert stats:', totalRes.error)
       return { total: 0, open: 0 }
     }
 
-    const openCount = (data || []).filter(a => a.status === 'open').length
     return {
-      total: count || 0,
-      open: openCount
+      total: totalRes.count || 0,
+      open: openRes.count || 0
     }
   },
 

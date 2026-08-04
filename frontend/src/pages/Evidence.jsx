@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Camera, ImageOff, Filter, Loader2, X } from 'lucide-react'
 import { formatDateTime, timeAgo } from '@/utils/helpers'
 import { dashboardService } from '@/services/dashboardService'
+import { useDataStore } from '@/stores/dataStore'
+import { supabase } from '@/lib/supabase'
 import Pagination from '@/components/ui/Pagination'
 import Dropdown from '@/components/ui/Dropdown'
 
@@ -12,7 +14,7 @@ const alertTypeColors = {
 }
 
 export default function Evidence() {
-  const [shelters, setShelters] = useState([])
+  const { shelters, sheltersLoaded, fetchShelters, getEvidenceCache, setEvidenceCache, prependEvidence } = useDataStore()
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [evidence, setEvidence] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,43 +22,69 @@ export default function Evidence() {
   const itemsPerPage = 9
   const [selectedImage, setSelectedImage] = useState(null)
 
+  // ─── Shelters from global store ───────────────────────────────────────────
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const sheltersData = await dashboardService.getShelters()
-        setShelters(sheltersData)
-        if (sheltersData.length > 0) {
-          setSelectedShelter(sheltersData[0].shelter_id)
-        } else {
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Error fetching shelters:', error)
-        setLoading(false)
-      }
+    if (!sheltersLoaded) {
+      fetchShelters().then((data) => {
+        if (data.length > 0 && !selectedShelter) setSelectedShelter(data[0].shelter_id)
+        else if (data.length === 0) setLoading(false)
+      })
+    } else if (shelters.length > 0 && !selectedShelter) {
+      setSelectedShelter(shelters[0].shelter_id)
+    } else if (shelters.length === 0) {
+      setLoading(false)
     }
-    fetchInitialData()
   }, [])
 
-  useEffect(() => {
-    const fetchEvidence = async () => {
-      if (!selectedShelter) return
-      setLoading(true)
-      try {
-        const data = await dashboardService.getAllEvidence(selectedShelter)
-        setEvidence(data)
-      } catch (error) {
-        console.error('Error fetching evidence:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchEvidence()
-  }, [selectedShelter])
+  // ─── Fetch Evidence (with cache) ──────────────────────────────────────────
+  const fetchEvidence = useCallback(async (silent = false) => {
+    if (!selectedShelter) return
 
+    // 1. Try cache first
+    const cached = getEvidenceCache(selectedShelter)
+    if (cached) {
+      setEvidence(cached)
+      if (!silent) setLoading(false)
+    } else if (!silent) {
+      setLoading(true)
+    }
+
+    // 2. Fetch fresh data in background
+    try {
+      const data = await dashboardService.getAllEvidence(selectedShelter)
+      setEvidence(data)
+      setEvidenceCache(selectedShelter, data)
+    } catch (error) {
+      console.error('Error fetching evidence:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedShelter, getEvidenceCache, setEvidenceCache])
+
+  useEffect(() => {
+    fetchEvidence()
+  }, [fetchEvidence])
+
+  // Reset to page 1 when shelter changes
   useEffect(() => {
     setCurrentPage(1)
   }, [selectedShelter])
+
+  // ─── Supabase Realtime: instant image updates ─────────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel('evidence-page')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'cctv_evidence'
+      }, async (payload) => {
+        // We get the new row, but we might need the joined alert data
+        // For simplicity, just refetch silently to get the full joined payload
+        fetchEvidence(true)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchEvidence])
 
   const totalPages = Math.ceil(evidence.length / itemsPerPage)
   const paginatedEvidence = useMemo(() => {
@@ -94,9 +122,12 @@ export default function Evidence() {
             className="w-48"
           />
         </div>
-        <p className="text-xs text-surface-500">
-          {evidence.length} evidence captures found
-        </p>
+        <div className="flex items-center gap-3">
+          {loading && <Loader2 className="h-3 w-3 animate-spin text-primary-500" />}
+          <p className="text-xs text-surface-500">
+            {evidence.length} evidence captures found
+          </p>
+        </div>
       </div>
 
       {evidence.length > 0 ? (

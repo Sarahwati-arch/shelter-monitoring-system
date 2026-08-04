@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   AlertTriangle,
   Filter,
@@ -12,6 +12,8 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
+import { useDataStore } from '@/stores/dataStore'
+import { supabase } from '@/lib/supabase'
 import { formatDateTime, timeAgo, getSeverityBadge, getStatusBadge } from '@/utils/helpers'
 import Pagination from '@/components/ui/Pagination'
 import Dropdown from '@/components/ui/Dropdown'
@@ -31,6 +33,8 @@ const alertTypeLabels = {
 }
 
 export default function Alerts() {
+  const { shelters, sheltersLoaded, fetchShelters } = useDataStore()
+
   const [alerts, setAlerts] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -38,30 +42,26 @@ export default function Alerts() {
   const [severityFilter, setSeverityFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [shelterFilter, setShelterFilter] = useState(null)
-  const [shelters, setShelters] = useState([])
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
+  // ─── Shelters from global store ───────────────────────────────────────────
   useEffect(() => {
-    const fetchShelters = async () => {
-      try {
-        const data = await dashboardService.getShelters()
-        setShelters(data)
-        if (data.length > 0) {
-          setShelterFilter(data[0].shelter_id)
-        }
-      } catch (error) {
-        console.error('Error fetching shelters:', error)
-      }
+    if (!sheltersLoaded) {
+      fetchShelters().then((data) => {
+        if (data.length > 0 && !shelterFilter) setShelterFilter(data[0].shelter_id)
+      })
+    } else if (shelters.length > 0 && !shelterFilter) {
+      setShelterFilter(shelters[0].shelter_id)
     }
-    fetchShelters()
   }, [])
 
-  const fetchAlerts = async () => {
-    if (shelterFilter === null && shelters.length === 0) return // Wait for initial shelter load
-    setLoading(true)
+  // ─── Fetch Alerts ─────────────────────────────────────────────────────────
+  const fetchAlerts = useCallback(async (silent = false) => {
+    if (shelterFilter === null && shelters.length === 0) return
+    if (!silent) setLoading(true)
     try {
       const data = await dashboardService.getAlerts({
         status: statusFilter,
@@ -75,13 +75,38 @@ export default function Alerts() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, typeFilter, severityFilter, shelterFilter, shelters.length])
 
   useEffect(() => {
     if (shelterFilter !== null || shelters.length > 0) {
       fetchAlerts()
     }
-  }, [statusFilter, typeFilter, severityFilter, shelterFilter, shelters.length])
+  }, [fetchAlerts])
+
+  // ─── Supabase Realtime: instant list update ───────────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel('alerts-page')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'alerts'
+      }, () => {
+        // Re-fetch silently when a new alert arrives
+        fetchAlerts(true)
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'alerts'
+      }, (payload) => {
+        // Update the specific alert in the list in-place
+        setAlerts((prev) =>
+          prev.map((a) =>
+            a.alert_id === payload.new.alert_id ? { ...a, ...payload.new } : a
+          )
+        )
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchAlerts])
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((a) => {
@@ -204,24 +229,12 @@ export default function Alerts() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-800/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">
-                  Message
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">
-                  Shelter
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">
-                  Severity
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">
-                  Time
-                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Message</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Shelter</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Severity</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-surface-500">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-800/30">
@@ -236,15 +249,11 @@ export default function Alerts() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Icon className="h-4 w-4 text-surface-400" />
-                        <span className="text-xs text-surface-400">
-                          {alertTypeLabels[alert.alert_type]}
-                        </span>
+                        <span className="text-xs text-surface-400">{alertTypeLabels[alert.alert_type]}</span>
                       </div>
                     </td>
                     <td className="max-w-xs px-4 py-3">
-                      <p className="truncate text-sm text-surface-200">
-                        {alert.message}
-                      </p>
+                      <p className="truncate text-sm text-surface-200">{alert.message}</p>
                     </td>
                     <td className="px-4 py-3 text-xs text-surface-400">
                       {alert.shelters?.shelter_name || 'Unknown'}
@@ -259,16 +268,14 @@ export default function Alerts() {
                         {alert.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-surface-500">
-                      {timeAgo(alert.created_at)}
-                    </td>
+                    <td className="px-4 py-3 text-xs text-surface-500">{timeAgo(alert.created_at)}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
-        
+
         {filteredAlerts.length > 0 && (
           <div className="px-4 pb-4">
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
@@ -304,12 +311,8 @@ export default function Alerts() {
             </div>
             <div className="space-y-4 p-5">
               <div className="flex gap-2">
-                <span className={`badge ${getSeverityBadge(selectedAlert.severity)}`}>
-                  {selectedAlert.severity}
-                </span>
-                <span className={`badge ${getStatusBadge(selectedAlert.status)}`}>
-                  {selectedAlert.status}
-                </span>
+                <span className={`badge ${getSeverityBadge(selectedAlert.severity)}`}>{selectedAlert.severity}</span>
+                <span className={`badge ${getStatusBadge(selectedAlert.status)}`}>{selectedAlert.status}</span>
               </div>
               <p className="text-sm text-surface-200">{selectedAlert.message}</p>
               <div className="grid grid-cols-2 gap-3 text-xs">
@@ -330,10 +333,10 @@ export default function Alerts() {
                   <p className="font-medium text-surface-300 capitalize">{selectedAlert.status}</p>
                 </div>
               </div>
-              
+
               <div className="flex gap-2 pt-2">
                 {selectedAlert.status === 'open' && (
-                  <button 
+                  <button
                     disabled={actionLoading !== null}
                     onClick={() => handleUpdateStatus(selectedAlert.alert_id, 'acknowledged')}
                     className="btn btn-primary flex-1"
@@ -342,7 +345,7 @@ export default function Alerts() {
                   </button>
                 )}
                 {selectedAlert.status !== 'closed' && (
-                  <button 
+                  <button
                     disabled={actionLoading !== null}
                     onClick={() => handleUpdateStatus(selectedAlert.alert_id, 'closed')}
                     className="btn btn-ghost flex-1"

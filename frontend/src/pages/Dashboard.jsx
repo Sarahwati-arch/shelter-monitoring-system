@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Thermometer,
   Droplets,
@@ -15,14 +15,16 @@ import SensorChart from '@/components/dashboard/SensorChart'
 import CCTVFeed from '@/components/dashboard/CCTVFeed'
 import AIVibrationCard from '@/components/dashboard/AIVibrationCard'
 import { dashboardService } from '@/services/dashboardService'
+import { useDataStore } from '@/stores/dataStore'
+import { supabase } from '@/lib/supabase'
 import Dropdown from '@/components/ui/Dropdown'
 
 export default function Dashboard() {
-  const [shelters, setShelters] = useState([])
+  const { shelters, sheltersLoaded, fetchShelters } = useDataStore()
   const [selectedShelter, setSelectedShelter] = useState(null)
   const [loading, setLoading] = useState(true)
   const [chartHours, setChartHours] = useState(0.5)
-  
+
   // Dashboard Data States
   const [latest, setLatest] = useState(null)
   const [thresholds, setThresholds] = useState(null)
@@ -30,42 +32,33 @@ export default function Dashboard() {
   const [alertStats, setAlertStats] = useState({ total: 0, open: 0 })
   const [now, setNow] = useState(Date.now())
 
+  // Keep chartHours accessible inside realtime callbacks without re-creating channel
+  const chartHoursRef = useRef(chartHours)
+  useEffect(() => { chartHoursRef.current = chartHours }, [chartHours])
 
-  // Initial Fetch: Shelters
+  // ─── Initial Fetch: Shelters (from global store) ──────────────────────────
   useEffect(() => {
-    const fetchShelters = async () => {
-      try {
-        const data = await dashboardService.getShelters()
-        setShelters(data)
-        if (data.length > 0) {
-          setSelectedShelter(data[0].shelter_id)
-        } else {
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Error fetching shelters:', error)
+    const init = async () => {
+      const data = await fetchShelters()
+      if (data.length > 0 && !selectedShelter) {
+        setSelectedShelter(data[0].shelter_id)
+      } else if (data.length === 0) {
         setLoading(false)
       }
     }
-    fetchShelters()
-  }, [])
+    init()
+  }, []) // run once
 
-  // Fetch Initial Heavy Data
+  // ─── Fetch Heavy Initial Data (when shelter / chartHours change) ──────────
   const fetchInitialData = useCallback(async () => {
     if (!selectedShelter) return
-
     try {
       setLoading(true)
-      const [
-        currentThresholds,
-        history,
-        stats
-      ] = await Promise.all([
+      const [currentThresholds, history, stats] = await Promise.all([
         dashboardService.getThresholds(selectedShelter),
         dashboardService.getSensorHistory(selectedShelter, chartHours),
         dashboardService.getAlertStats(selectedShelter)
       ])
-
       setThresholds(currentThresholds)
       setSensorData(history)
       setAlertStats(stats)
@@ -76,64 +69,148 @@ export default function Dashboard() {
     }
   }, [selectedShelter, chartHours])
 
-  // Fetch Lightweight Realtime Data
+  // Run initial fetch only when shelter or chartHours change (NOT on every poll)
+  useEffect(() => {
+    fetchInitialData()
+  }, [fetchInitialData])
+
+  // ─── Silent Realtime Poll (fallback if WebSocket misses an event) ─────────
   const fetchRealtimeData = useCallback(async () => {
     if (!selectedShelter) return
-
     try {
       const [latestReading, stats] = await Promise.all([
         dashboardService.getLatestReading(selectedShelter),
-        dashboardService.getAlertStats(selectedShelter) // alert stats are lightweight
+        dashboardService.getAlertStats(selectedShelter)
       ])
-
       setLatest(latestReading)
       setAlertStats(stats)
 
-      // Append latest reading to history without refetching everything
-      if (latestReading && latestReading.timestamp) {
-        setSensorData(prev => {
+      if (latestReading?.timestamp) {
+        setSensorData((prev) => {
           if (!prev) return [latestReading]
-          
-          if (prev.length > 0 && prev[prev.length - 1].timestamp === latestReading.timestamp) {
-            return prev
-          }
-          
+          if (prev.length > 0 && prev[prev.length - 1].timestamp === latestReading.timestamp) return prev
           const newData = [...prev, latestReading]
-          const cutoff = Date.now() - (chartHours * 60 * 60 * 1000)
-          
-          // Keep only data within the selected hours
-          return newData.filter(d => new Date(d.timestamp).getTime() > cutoff)
+          const cutoff = Date.now() - chartHoursRef.current * 60 * 60 * 1000
+          return newData.filter((d) => new Date(d.timestamp).getTime() > cutoff)
         })
       }
     } catch (error) {
       console.error('Error fetching realtime dashboard data:', error)
     }
-  }, [selectedShelter, chartHours])
+  }, [selectedShelter])
 
-  // Initial load when shelter or hours change
+  // Polling interval — 10 s fallback, no setLoading
   useEffect(() => {
-    fetchInitialData()
+    if (!selectedShelter) return
+    
+    // Call immediately to populate 'latest' state without waiting 10s
     fetchRealtimeData()
-  }, [fetchInitialData, fetchRealtimeData])
+    setNow(Date.now())
 
-  // Auto-refresh interval for realtime data
-  useEffect(() => {
     const interval = setInterval(() => {
       fetchRealtimeData()
       setNow(Date.now())
-    }, 3000)
-    
+    }, 10000)
     return () => clearInterval(interval)
-  }, [fetchRealtimeData])
+  }, [fetchRealtimeData, selectedShelter])
 
-  const shelter = useMemo(() => 
+  // ─── Supabase Realtime Subscription ──────────────────────────────────────
+  useEffect(() => {
+    if (!selectedShelter) return
+
+    const channel = supabase
+      .channel(`dashboard-${selectedShelter}`)
+
+      // New temperature reading → update gauge + chart immediately
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'temperature_data',
+        filter: `shelter_id=eq.${selectedShelter}`
+      }, (payload) => {
+        const row = payload.new
+        setLatest((prev) => ({
+          ...(prev || {}),
+          timestamp: row.timestamp,
+          temperature: row.temperature,
+          humidity: row.humidity,
+          temp_risk_level: row.risk_level || 'low',
+          risk_level: row.risk_level || 'low',
+        }))
+        setSensorData((prev) => {
+          const point = {
+            timestamp: row.timestamp,
+            temperature: row.temperature,
+            humidity: row.humidity,
+            vibration: null,
+            vibration_metadata: {}
+          }
+          if (!prev) return [point]
+          if (prev.length > 0 && prev[prev.length - 1].timestamp === point.timestamp) return prev
+          const newData = [...prev, point]
+          const cutoff = Date.now() - chartHoursRef.current * 60 * 60 * 1000
+          return newData.filter((d) => new Date(d.timestamp).getTime() > cutoff)
+        })
+        setNow(Date.now())
+      })
+
+      // New vibration reading → update vibration gauge + AI card
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'vibration_data',
+        filter: `shelter_id=eq.${selectedShelter}`
+      }, (payload) => {
+        const row = payload.new
+        const vibMag = Number(
+          Math.sqrt(row.accel_x ** 2 + row.accel_y ** 2 + row.accel_z ** 2).toFixed(2)
+        )
+        setLatest((prev) => ({
+          ...(prev || {}),
+          vibration: vibMag,
+          vib_risk_level: row.risk_level || 'low',
+          vibration_metadata: row.metadata || {},
+        }))
+        setSensorData((prev) => {
+          if (!prev || prev.length === 0) return prev
+          const last = prev[prev.length - 1]
+          const timeDiff = Math.abs(
+            new Date(last.timestamp).getTime() - new Date(row.timestamp).getTime()
+          )
+          if (timeDiff < 5000) {
+            // Merge into existing latest point
+            return [...prev.slice(0, -1), { ...last, vibration: vibMag, vibration_metadata: row.metadata || {} }]
+          }
+          const point = {
+            timestamp: row.timestamp, temperature: null, humidity: null,
+            vibration: vibMag, vibration_metadata: row.metadata || {}
+          }
+          const newData = [...prev, point]
+          const cutoff = Date.now() - chartHoursRef.current * 60 * 60 * 1000
+          return newData.filter((d) => new Date(d.timestamp).getTime() > cutoff)
+        })
+        setNow(Date.now())
+      })
+
+      // Alert changes → refresh stats
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'alerts',
+        filter: `shelter_id=eq.${selectedShelter}`
+      }, () => {
+        dashboardService.getAlertStats(selectedShelter)
+          .then((stats) => setAlertStats(stats))
+          .catch(() => {})
+      })
+
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [selectedShelter])
+
+  const shelter = useMemo(() =>
     shelters.find((s) => s.shelter_id === selectedShelter),
     [shelters, selectedShelter]
   )
 
-  const tempRiskLevel = !latest ? 'low' : latest.temperature === null ? 'offline' : latest.temperature >= (thresholds?.temp_critical || 40) ? 'high' : latest.temperature >= (thresholds?.temp_warning || 35) ? 'medium' : 'low'
-  const humidRiskLevel = !latest ? 'low' : latest.humidity === null ? 'offline' : latest.humidity >= (thresholds?.humidity_critical || 90) ? 'high' : latest.humidity >= (thresholds?.humidity_warning || 80) ? 'medium' : 'low'
-  const vibRiskLevel = latest?.vib_risk_level || 'low'
+  const tempRiskLevel = (!latest || latest.temperature === null) ? 'offline' : (latest.temp_risk_level || 'low')
+  const humidRiskLevel = (!latest || latest.humidity === null) ? 'offline' : (latest.risk_level || 'low')
+  const vibRiskLevel = (!latest || latest.vibration === null) ? 'offline' : (latest.vib_risk_level || 'low')
 
   if (loading && shelters.length === 0) {
     return (
@@ -248,7 +325,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Charts + Alert Feed */}
+      {/* Charts + AI Diagnostics */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* Charts */}
         <div className="xl:col-span-2 space-y-4">
@@ -261,12 +338,7 @@ export default function Dashboard() {
             </h3>
             <div className="h-48">
               {sensorData.length > 0 ? (
-                <SensorChart
-                  sensorData={sensorData}
-                  type="temperature"
-                  hours={chartHours}
-                  now={now}
-                />
+                <SensorChart sensorData={sensorData} type="temperature" hours={chartHours} now={now} />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">
                   No data available for this period
@@ -283,12 +355,7 @@ export default function Dashboard() {
             </h3>
             <div className="h-48">
               {sensorData.length > 0 ? (
-                <SensorChart
-                  sensorData={sensorData}
-                  type="humidity"
-                  hours={chartHours}
-                  now={now}
-                />
+                <SensorChart sensorData={sensorData} type="humidity" hours={chartHours} now={now} />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">
                   No data available for this period
@@ -305,12 +372,7 @@ export default function Dashboard() {
             </h3>
             <div className="h-48">
               {sensorData.length > 0 ? (
-                <SensorChart
-                  sensorData={sensorData}
-                  type="vibration"
-                  hours={chartHours}
-                  now={now}
-                />
+                <SensorChart sensorData={sensorData} type="vibration" hours={chartHours} now={now} />
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-surface-500">
                   No data available for this period
@@ -321,18 +383,18 @@ export default function Dashboard() {
 
         </div>
 
-        {/* Right Column: AI Diagnostics */}
+        {/* Right Column: AI Diagnostics + CCTV */}
         <div className="flex flex-col gap-6">
 
           {/* AI Diagnostics Card */}
           <div className="flex-1">
-            <AIVibrationCard 
-              latestMetadata={latest?.vibration_metadata} 
-              sensorData={sensorData} 
+            <AIVibrationCard
+              latestMetadata={latest?.vibration_metadata}
+              sensorData={sensorData}
             />
           </div>
 
-          {/* CCTV Feed moved here */}
+          {/* CCTV Feed */}
           <div className="glass-card p-5 flex-1 flex flex-col">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-surface-200">
               <Camera className="h-4 w-4 text-primary-400" />

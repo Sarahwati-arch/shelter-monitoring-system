@@ -3,6 +3,8 @@ import { dashboardService } from '@/services/dashboardService'
 import { timeAgo, getDeviceStatusColor } from '@/utils/helpers'
 import { Cpu, Wifi, WifiOff, Camera, Activity, Plus, Loader2, ShieldOff, Thermometer, X, Trash2, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useDataStore } from '@/stores/dataStore'
+import { supabase } from '@/lib/supabase'
 import Pagination from '@/components/ui/Pagination'
 import Dropdown from '@/components/ui/Dropdown'
 
@@ -42,51 +44,77 @@ export default function Devices() {
   const { profile } = useAuthStore()
   const isAdmin = profile?.role === 'admin'
 
+  const { shelters, sheltersLoaded, fetchShelters, getDevicesCache, setDevicesCache } = useDataStore()
+
   const [devices, setDevices] = useState([])
-  const [shelters, setShelters] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedShelter, setSelectedShelter] = useState(null)
+  
   const [showAddModal, setShowAddModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(null) // device object
   const [showEditModal, setShowEditModal] = useState(null) // device object to edit
   const [deviceToDelete, setDeviceToDelete] = useState(null) // device_id to delete
   const [form, setForm] = useState({ ...emptyForm })
   const [submitting, setSubmitting] = useState(false)
+  
   const [deviceReadings, setDeviceReadings] = useState([])
   const [readingsLoading, setReadingsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 9
 
-  const fetchDevices = useCallback(async () => {
-    setLoading(true)
+  // ─── Shelters from global store ───────────────────────────────────────────
+  useEffect(() => {
+    if (!sheltersLoaded) {
+      fetchShelters().then((data) => {
+        if (data.length > 0 && selectedShelter === null) {
+          setSelectedShelter(data[0].shelter_id)
+        }
+      })
+    } else if (shelters.length > 0 && selectedShelter === null) {
+      setSelectedShelter(shelters[0].shelter_id)
+    }
+  }, [])
+
+  // ─── Fetch Devices ────────────────────────────────────────────────────────
+  const fetchDevices = useCallback(async (silent = false) => {
+    // 1. Try cache first
+    const cached = getDevicesCache(selectedShelter)
+    if (cached) {
+      setDevices(cached)
+      if (!silent) setLoading(false)
+    } else if (!silent) {
+      setLoading(true)
+    }
+
+    // 2. Fetch fresh data
     try {
       const data = await dashboardService.getDevices(selectedShelter)
       setDevices(data)
+      setDevicesCache(selectedShelter, data)
     } catch (error) {
       console.error('Error fetching devices:', error)
     } finally {
       setLoading(false)
     }
-  }, [selectedShelter])
-
-  useEffect(() => {
-    const fetchShelters = async () => {
-      try {
-        const data = await dashboardService.getShelters()
-        setShelters(data)
-        // Set default shelter only on initial load
-        if (data.length > 0) {
-          setSelectedShelter(prev => prev === null ? data[0].shelter_id : prev)
-        }
-      } catch (error) {
-        console.error('Error fetching shelters:', error)
-      }
-    }
-    fetchShelters()
-  }, [])
+  }, [selectedShelter, getDevicesCache, setDevicesCache])
 
   useEffect(() => {
     fetchDevices()
+  }, [fetchDevices])
+
+  // ─── Supabase Realtime: instant device updates ────────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel('devices-page')
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'devices'
+      }, () => {
+        // Just refetch silently to ensure we have the latest joined data
+        fetchDevices(true)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [fetchDevices])
 
   const handleAddDevice = async (e) => {
@@ -145,11 +173,10 @@ export default function Devices() {
   const handleStatusChange = async (deviceId, newStatus) => {
     try {
       await dashboardService.updateDeviceStatus(deviceId, newStatus)
-      // Update local state for detail modal
+      // Local state update for modal is handled automatically by realtime / silent refetch
       if (showDetailModal && showDetailModal.device_id === deviceId) {
         setShowDetailModal({ ...showDetailModal, status: newStatus })
       }
-      fetchDevices()
     } catch (error) {
       console.error('Error updating device status:', error)
       alert('Failed to update status: ' + error.message)
@@ -191,7 +218,7 @@ export default function Devices() {
     }
   }, [filteredDevices, currentPage, totalPages])
 
-  if (loading) {
+  if (loading && devices.length === 0) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
@@ -204,6 +231,7 @@ export default function Devices() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-primary-500" />}
           <p className="text-sm text-surface-400">
             {filteredDevices.length} devices registered
           </p>

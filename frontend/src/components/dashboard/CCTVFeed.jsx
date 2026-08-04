@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Camera, Eye, Clock, Loader2, AlertTriangle, Calendar, ChevronRight } from 'lucide-react'
 import { timeAgo } from '@/utils/helpers'
 import { dashboardService } from '@/services/dashboardService'
+import { supabase } from '@/lib/supabase'
 
 const alertTypeColors = {
   intrusion: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -30,6 +31,25 @@ export default function CCTVFeed({ shelterId }) {
     }
 
     fetchEvidence()
+  }, [shelterId])
+
+  useEffect(() => {
+    if (!shelterId) return
+    const channel = supabase
+      .channel(`cctvfeed-${shelterId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'cctv_evidence'
+      }, async () => {
+        // Fetch the newly inserted evidence to get the joined alert data
+        try {
+          const data = await dashboardService.getLatestEvidence(shelterId)
+          if (data) setEvidence(data)
+        } catch (e) {
+          console.error(e)
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [shelterId])
 
   if (loading) {

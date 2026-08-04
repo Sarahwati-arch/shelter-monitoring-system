@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Shield, Users, Sliders, Settings, MapPin, Plus, Loader2, AlertCircle, X, Trash2, AlertTriangle, Timer, UserPlus } from 'lucide-react'
 import { dashboardService } from '@/services/dashboardService'
+import { useDataStore } from '@/stores/dataStore'
 import { supabase } from '@/lib/supabase'
 import Pagination from '@/components/ui/Pagination'
 import Dropdown from '@/components/ui/Dropdown'
@@ -27,7 +28,7 @@ const tabs = [
 ]
 
 function SheltersTab() {
-  const [shelters, setShelters] = useState([])
+  const { shelters, sheltersLoaded, fetchShelters } = useDataStore()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(null)
@@ -38,19 +39,12 @@ function SheltersTab() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 6
 
-  const fetchShelters = async () => {
-    try {
-      const data = await dashboardService.getShelters()
-      setShelters(data)
-    } catch (error) {
-      console.error('Error fetching shelters:', error)
-    } finally {
+  useEffect(() => {
+    const load = async () => {
+      if (!sheltersLoaded) await fetchShelters()
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    fetchShelters()
+    load()
   }, [])
 
   const totalPages = Math.ceil(shelters.length / itemsPerPage)
@@ -394,10 +388,8 @@ function ThresholdsTab() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sData, tDataList] = await Promise.all([
-          dashboardService.getShelters(),
-          dashboardService.getAllThresholds()
-        ])
+        const sData = await dashboardService.getShelters()
+        const tDataList = await dashboardService.getAllThresholds()
         setShelters(sData)
         
         const tData = {}
@@ -889,10 +881,8 @@ function SystemTab() {
 
   const fetchData = async () => {
     try {
-      const [sysStatus, sysSettings] = await Promise.all([
-        dashboardService.checkSystemStatus(),
-        dashboardService.getSystemSettings()
-      ])
+      const sysStatus = await dashboardService.checkSystemStatus()
+      const sysSettings = await dashboardService.getSystemSettings()
       setStatus(sysStatus)
       setSettings(sysSettings || {})
     } catch (err) {

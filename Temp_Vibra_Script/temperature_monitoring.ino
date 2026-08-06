@@ -212,7 +212,14 @@ void readAndPublish() {
   uint16_t rawTemp = (data[0] << 8) | data[1];
   uint16_t rawHum  = (data[3] << 8) | data[4];
 
-  float temperature = -45.0 + (175.0 * rawTemp / 65535.0);
+  // --- KALIBRASI SUHU ---
+  // Hasil pengujian manual dengan Termometer Klinis: T_Ref = 35.6°C, T_Sensor = 35.67°C
+  // Offset = 35.6 - 35.67 = -0.07
+  float calibration_offset = -0.07;
+  
+  float raw_temperature = -45.0 + (175.0 * rawTemp / 65535.0);
+  float temperature = raw_temperature + calibration_offset;
+  
   float humidity    = 100.0 * rawHum / 65535.0;
 
   Serial.printf("[Sensor] Temp: %.2f°C | Hum: %.2f%% | Interval: %lums\n",

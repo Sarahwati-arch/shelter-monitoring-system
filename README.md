@@ -197,6 +197,26 @@ Install via **Library Manager** (Tools → Manage Libraries):
 - `Wire` (built-in ESP32)
 - `WiFi` (built-in ESP32)
 
+### Kalibrasi Hardware
+
+Sensor SHT3X menggunakan _Factory Calibration_ (±0.2°C) yang dikonversi secara matematis berdasarkan _datasheet_ resmi. Sensor pada purwarupa ini telah melewati tahap **Kalibrasi Ulang (Closed-Loop Calibration)** menggunakan Termometer Klinis Digital sebagai standar acuan. 
+
+Hasil validasi menunjukkan tingkat kesalahan ukur (*error*) yang sangat presisi (0.07°C), yang mana angka ini telah diimplementasikan sebagai `calibration_offset` secara *hardcode* di mikrokontroler. Panduan mendetail mengenai prosedur kalibrasi ini dapat dibaca pada [calibration_plan.md](./calibration_plan.md).
+
+**Implementasi Perhitungan Kalibrasi (C++):**
+```cpp
+// 1. Perhitungan Selisih Error
+// T_Ref (Termometer) = 35.6 °C | T_Sensor (SHT3X) = 35.67 °C
+// Offset = 35.6 - 35.67 = -0.07 °C
+float calibration_offset = -0.07;
+
+// 2. Konversi Nilai Mentah ke Celcius (Berdasarkan Datasheet SHT3X)
+float raw_temperature = -45.0 + (175.0 * rawTemp / 65535.0);
+
+// 3. Penerapan Offset ke Suhu Akhir
+float temperature = raw_temperature + calibration_offset;
+```
+
 ### MQTT Topics
 
 | Topic | Arah | Payload |
@@ -386,14 +406,14 @@ cd vibration_ai
 python 1_feature_extractor.py
 # Output: features_X.npy, features_y.npy
 
-# Langkah 2: Training model (80:20 stratified split)
+# Langkah 2: Training model (80:20 stratified split, RandomForest n_estimators=100)
 python 2_model_trainer.py
-# Output: models/vibration_classifier.pkl
-#         models/scaler.pkl
+# Output: models/vibration_classifier.pkl (RandomForest n_estimators=100)
+#         models/scaler.pkl (StandardScaler)
 #         models/evaluation_report.txt
 ```
 
-> Jika akurasi model < 85%, trainer akan otomatis memunculkan peringatan.
+> **Hyperparameter Model**: `RandomForestClassifier(n_estimators=100, random_state=42)`. Pemilihan 100 decision trees mengoptimalkan *variance reduction* (bagging) dan menjamin kecepatan *sub-millisecond inference* pada Python bridge. Jika akurasi < 85%, trainer memunculkan peringatan.
 
 ### Cara Kerja Inference Real-time di Bridge
 
@@ -405,6 +425,25 @@ python 2_model_trainer.py
    - **AI Menang**: Jika AI mendeteksi *"Sabotage"* atau *"Earthquake"* (High Risk), status otomatis menjadi **HIGH**, meskipun getaran fisiknya masih di bawah threshold.
    - **Threshold Menang (Safety Net Fisik)**: Jika AI mendeteksi *"Normal/AC"* atau *"Footsteps"* (Low Risk), TAPI guncangan fisik melebihi threshold critical DB, sistem mengabaikan penilaian AI dan tetap menetapkan status **HIGH**.
    - **Fallback/Offline**: Jika model AI mati atau error, sistem kembali 100% mengandalkan threshold DB Supabase.
+
+### 🧠 Alur Pemetaan AI Risk Level (Deep-Dive Penentuan Risk oleh AI)
+
+Apabila penguji menanyakan *"Bagaimana AI menentukan risk level (low/medium/high)?"*, berikut adalah 5 tahap matematis & logikanya:
+
+```
+[Window 10 Sampel Magnitude] ──► [Ekstraksi 14 Fitur Statistik] ──► [StandardScaler Scaling]
+                                                                             │
+                                                                             ▼
+[Hybrid Risk Engine: max(conventional, AI)] ◄── [Mapping CLASS_RISK_MAP] ◄── [Random Forest Predict & Confidence >= 60%]
+```
+
+| Tahap | Proses | Penjelasan Teknis |
+|---|---|---|
+| **1. Windowing** | 10 Sampel Magnitude | Mengakumulasi 10 sampel $M = \sqrt{a_x^2 + a_y^2 + a_z^2}$ dari akselerometer MPU6050 |
+| **2. Feature Extraction** | 14 Fitur Statistik | Mengekstrak ZCR, Mean, Std, Skewness, Kurtosis, Crest Factor, Min, Max, Range, Median, MAD, IQR, RMS, Energy |
+| **3. Model Inference** | Random Forest (100 Trees) | Skalakan dengan `scaler.pkl` $\rightarrow$ masukan ke `vibration_classifier.pkl` $\rightarrow$ menghasilkan `pred_class` ($0..4$) & `max_prob` |
+| **4. Confidence Gate** | Ambang Batas 60% | Jika `max_prob` $< 0.60$, hasil AI dianggap meragukan (`ai_fallback = True`) dan menggunakan risiko threshold DB |
+| **5. Class Mapping** | `CLASS_RISK_MAP` | Pemetaan kelas prediksi ke level risiko: <br>• Class 0 (`Normal/AC`) $\rightarrow$ **`low`** <br>• Class 1 (`Footsteps`) $\rightarrow$ **`low`** <br>• Class 3 (`Vehicle`) $\rightarrow$ **`medium`** <br>• Class 2 (`Sabotage`) $\rightarrow$ **`high`** <br>• Class 4 (`Earthquake`) $\rightarrow$ **`high`** |
 
 **Contoh metadata yang tersimpan di `vibration_data.metadata`:**
 

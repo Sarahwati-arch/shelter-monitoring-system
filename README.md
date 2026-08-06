@@ -76,92 +76,97 @@ Sistem monitoring berbasis IoT, AI, dan Computer Vision untuk memantau kondisi s
 ## Struktur Project
 
 ```
-shelter-monitoring-system/
-├── Temp_Vibra_Script/               # Arduino sketches untuk ESP32
-│   ├── temperature_monitoring.ino   # Sensor suhu & kelembaban (SHT3X)
-│   └── vibration_monitoring.ino    # Sensor getaran (MPU6050)
-│
-├── vibration_ai/                    # Pipeline training model AI getaran
-│   ├── 1_feature_extractor.py       # Ekstraksi 14 fitur statistik dari sinyal
-│   ├── 2_model_trainer.py           # Training Random Forest Classifier
-│   └── models/
-│       ├── vibration_classifier.pkl # Model hasil training
-│       └── scaler.pkl               # StandardScaler
-│
-├── bridge/                          # MQTT → Supabase bridge (Python)
-│   ├── mqtt_to_supabase.py          # Main bridge script (+ Vibration AI)
-│   ├── simulator.py                 # Simulator MQTT basic
-│   ├── simulator_earthquake.py      # Simulasi gempa bumi
-│   ├── simulator_smart.py           # Simulator pola realistis
-│   ├── requirements.txt
-│   ├── .env.example
-│   ├── Procfile                     # Untuk deploy ke Railway/Heroku
-│   └── runtime.txt
-│
-├── face_recognition/                # Computer Vision pipeline
-│   ├── src/
-│   │   ├── stage1/
-│   │   │   ├── stage1_face_detect.py     # MTCNN face detection core
-│   │   │   ├── webcam_test.py            # Runner utama (live webcam)
-│   │   │   └── supabase_uploader.py      # Upload snapshot ke Supabase
-│   │   ├── stage2/
-│   │   │   └── stage2_face_recognition.py # ArcFace recognition
-│   │   └── sync_employees.py             # Edge sync worker (cloud → local)
-│   ├── data/
-│   │   └── faces/                        # Foto enrollment per identitas
-│   │       └── <nama_orang>/
-│   │           └── photo_001.jpg ...
-│   ├── models/
-│   │   ├── embeddings.npy                # ArcFace embedding matrix
-│   │   └── employee_metadata.json        # Metadata per embedding
-│   ├── logs/                             # Log harian stage1 & stage2
-│   ├── requirements.txt
-│   ├── .env.example
-│   ├── start.bat                         # Quick start (Windows)
-│   └── start.sh                          # Quick start (Linux/Mac)
-│
-├── supabase/                        # Database schema & migrations
-│   ├── migrations/
-│   │   ├── 001_init_schema.sql           # Schema utama (semua tabel)
-│   │   ├── 002_rls_policies.sql          # Row Level Security
-│   │   ├── 003_storage_buckets.sql       # Storage buckets
-│   │   ├── 004_seed_data.sql             # Data awal / contoh
-│   │   ├── 005_migrate_device_types.sql
-│   │   ├── 006_auth_trigger.sql          # Auto-create user profile on signup
-│   │   ├── 007_vibration_thresholds.sql  # Split vibration warning/critical
-│   │   ├── 008_create_employees_table.sql
-│   │   ├── 009_alter_employees_image_paths.sql
-│   │   ├── add_sensor_intervals.sql      # Kolom interval sensor
-│   │   └── fix_vibration_thresholds.sql
-│   ├── cloud-setup.sql                   # All-in-one setup untuk Supabase cloud
-│   └── config.toml                       # Supabase local config
-│
-└── frontend/                        # Web Dashboard (React + Vite)
-    ├── src/
-    │   ├── pages/
-    │   │   ├── Dashboard.jsx
-    │   │   ├── Alerts.jsx
-    │   │   ├── Evidence.jsx
-    │   │   ├── Devices.jsx
-    │   │   ├── Reports.jsx
-    │   │   ├── Admin.jsx
-    │   │   ├── EmployeeEnrollment.jsx
-    │   │   ├── Profile.jsx
-    │   │   └── Login.jsx
-    │   ├── components/
-    │   │   ├── dashboard/      # GaugeCard, SensorChart, CCTVFeed, AIVibrationCard
-    │   │   ├── layout/         # AppLayout, Sidebar, Header
-    │   │   └── ui/             # Dropdown, Pagination
-    │   ├── services/
-    │   │   ├── dashboardService.js   # Semua query ke Supabase
-    │   │   └── reportService.js      # Fetch data untuk export Excel
-    │   ├── stores/
-    │   │   └── authStore.js          # Zustand auth state
-    │   └── lib/
-    │       └── supabase.js           # Supabase client
-    ├── .env.example
-    ├── vite.config.js
-    └── vercel.json
+ shelter-monitoring-system/
+ ├── Temp_Vibra_Script/               # Arduino sketches untuk ESP32
+ │   ├── temperature_monitoring.ino   # Sensor suhu & kelembaban (SHT3X)
+ │   └── vibration_monitoring.ino    # Sensor getaran (MPU6050)
+ │
+ ├── vibration_ai/                    # Pipeline training model AI getaran
+ │   ├── 1_feature_extractor.py       # Ekstraksi 14 fitur statistik dari sinyal
+ │   ├── 2_model_trainer.py           # Training Random Forest Classifier
+ │   ├── augment_dataset.py           # Data augmentation untuk dataset getaran
+ │   ├── diagnose.py                  # Evaluasi performa model & confusion matrix
+ │   ├── format_logs_to_json.py       # Converter log mentah sensor -> JSON window
+ │   ├── analyze.py                   # Analisis spektral & distribusi fitur
+ │   ├── test_scenarios.py            # Unit test ekstraksi 14 fitur
+ │   └── models/
+ │       ├── vibration_classifier.pkl # Model hasil training
+ │       └── scaler.pkl               # StandardScaler
+ │
+ ├── bridge/                          # MQTT → Supabase bridge (Python)
+ │   ├── mqtt_to_supabase.py          # Main bridge script (+ Vibration AI)
+ │   ├── simulator.py                 # Simulator MQTT basic
+ │   ├── simulator_earthquake.py      # Simulasi gempa bumi
+ │   ├── simulator_smart.py           # Simulator pola realistis
+ │   ├── simulator_advanced.py        # Simulasi skenario kompleks
+ │   ├── simulator_direct.py          # Direct publish test
+ │   ├── simulator_guaranteed.py      # Reliable test payload
+ │   ├── requirements.txt
+ │   ├── .env.example
+ │   ├── Procfile                     # Untuk deploy ke Railway/Heroku
+ │   └── runtime.txt
+ │
+ ├── face_recognition/                # Computer Vision pipeline
+ │   ├── src/
+ │   │   ├── pi_camera/               # Native Raspberry Pi 5 Camera integration
+ │   │   │   ├── pi_camera_test.py    # Runner utama Pi Camera (Picamera2)
+ │   │   │   └── supabase_uploader.py # Snapshot & alert uploader
+ │   │   ├── stage1/
+ │   │   │   ├── stage1_face_detect.py # MTCNN face detection core
+ │   │   │   ├── webcam_test.py        # Runner webcam (OpenCV)
+ │   │   │   ├── supabase_uploader.py  # Upload snapshot ke Supabase
+ │   │   │   └── verify_env.py         # Diagnostic lingkungan PyTorch/OpenCV
+ │   │   ├── stage2/
+ │   │   │   └── stage2_face_recognition.py # ArcFace recognition
+ │   │   └── sync_employees.py         # Edge sync worker (cloud → local)
+ │   ├── scripts/
+ │   │   └── migrate_faces_to_supabase.py # Helper migrasi foto lokal ke Storage
+ │   ├── data/
+ │   │   └── faces/                    # Foto enrollment per identitas
+ │   │       └── <nama_orang>/
+ │   │           └── photo_001.jpg ...
+ │   ├── models/
+ │   │   ├── embeddings.npy            # ArcFace embedding matrix
+ │   │   └── employee_metadata.json    # Metadata per embedding
+ │   ├── logs/                         # Log harian stage1 & stage2
+ │   ├── requirements.txt
+ │   ├── .env.example
+ │   ├── start.bat                     # Quick start (Windows)
+ │   └── start.sh                      # Quick start (Linux/Mac)
+ │
+ ├── supabase/                        # Database schema & migrations
+ │   ├── migrations/                  # Migration SQL 001 s/d 014 + helpers
+ │   ├── cloud-setup.sql               # All-in-one setup untuk Supabase cloud
+ │   ├── exampledata.sql               # Seed data dummy
+ │   └── config.toml                   # Supabase local config
+ │
+ ├── frontend/                        # Web Dashboard (React + Vite)
+ │   ├── src/
+ │   │   ├── pages/                   # Dashboard, Alerts, Evidence, Devices, AuditLogs,
+ │   │   │                            # Reports, Admin, EmployeeEnrollment, Profile, Login
+ │   │   ├── components/
+ │   │   │   ├── dashboard/           # GaugeCard, SensorChart, CCTVFeed, AIVibrationCard,
+ │   │   │   │                        # AlertFeed, StatusCard
+ │   │   │   ├── auth/                # ProtectedRoute (Role Guard)
+ │   │   │   ├── layout/              # AppLayout, Sidebar, Header
+ │   │   │   └── ui/                  # Dropdown, Pagination
+ │   │   ├── services/
+ │   │   │   ├── dashboardService.js  # Semua query ke Supabase
+ │   │   │   └── reportService.js     # Fetch data untuk export Excel
+ │   │   ├── utils/
+ │   │   │   ├── exportToExcel.js     # Engine export Excel (XLSX)
+ │   │   │   └── helpers.js           # Utility helpers
+ │   │   ├── stores/
+ │   │   │   └── authStore.js         # Zustand auth state
+ │   │   └── lib/
+ │   │       └── supabase.js          # Supabase client
+ │   ├── .env.example
+ │   ├── vite.config.js
+ │   └── vercel.json
+ │
+ ├── FACE_RECOGNITION_TECHNICAL_OVERVIEW.md # Dokumentasi mendalam Computer Vision
+ ├── VIBRATION_AI_TECHNICAL_OVERVIEW.md  # Dokumentasi mendalam Vibration AI
+ └── MODEL_DIAGNOSTICS.md                # Laporan evaluasi & diagnosa model AI
 ```
 
 ---
@@ -289,19 +294,24 @@ Filter dijalankan di setiap iterasi `loop()` (non-blocking), terpisah dari inter
 
 ### Status LED & Buzzer
 
-Vibration level dihitung dari magnitude EMA:
+Vibration level dihitung dari magnitude accelerometer (filtered EMA):
 
 ```
-vibLevel = (sqrt(ax^2+ay^2+az^2) + sqrt(gx^2+gy^2+gz^2)) / 2
+vibLevel = sqrt(ax^2 + ay^2 + az^2)
 ```
 
 | Status | vibLevel | LED | Buzzer |
 |---|---|---|---|
-| NORMAL | < 0.3 | Hijau ON | OFF |
-| WARNING | 0.3–0.69 | Kuning ON | Blink tiap 500ms |
-| CRITICAL | ≥ 0.7 | Merah ON | Continuous ON |
+| NORMAL | < `vibWarning` | Hijau ON | OFF |
+| WARNING | `vibWarning` – `vibCritical` | Kuning ON | Blink tiap 500ms |
+| CRITICAL | ≥ `vibCritical` | Merah ON | Continuous ON |
 
-> Threshold lokal ini hanya untuk LED/Buzzer di hardware. Risk level final menggunakan magnitude accel dalam satuan **g** dan dihitung oleh bridge berdasarkan threshold dari database Supabase.
+> **Catatan Sinkronisasi Threshold Dinamis:**
+> 
+> 1. **Sumber Utama (Source of Truth)**: Threshold getaran disimpan di database Supabase (tabel `thresholds`, default: `0.3` g warning / `0.7` g critical) dan diatur oleh Admin via Web App.
+> 2. **Push Config via MQTT**: Bridge (`mqtt_to_supabase.py`) mem-publish threshold dari Supabase ke topic `<token>/Config` (misal: `{"vib_warn": 0.3, "vib_crit": 0.7}`).
+> 3. **Update Runtime ESP32**: Fungsi `mqttCallback()` di ESP32 menerima payload JSON tersebut dan meng-override variabel `vibWarning` & `vibCritical` saat runtime tanpa perlu reflash firmware.
+> 4. **Firmware Startup Fallback**: Di kode C++ (`vibration_monitoring.ino`), variabel `vibWarning = 1.5;` dan `vibCritical = 2.5;` digunakan sebagai *initial fallback* sementara saat cold-boot sebelum pesan MQTT Config dari Supabase diterima.
 
 ### Konfigurasi yang Wajib Disesuaikan
 
@@ -336,7 +346,7 @@ Model AI untuk mengklasifikasikan **penyebab getaran** menjadi 5 kelas berdasark
 
 ### 14 Fitur Statistik yang Di-extract
 
-Dari window **50 sample** magnitude sinyal accelerometer:
+Dari window **10 sample** magnitude sinyal accelerometer (pada live inference bridge):
 
 | # | Fitur | Deskripsi |
 |---|---|---|
@@ -387,10 +397,14 @@ python 2_model_trainer.py
 
 ### Cara Kerja Inference Real-time di Bridge
 
-1. Bridge mengakumulasi **magnitude accel** `sqrt(ax^2+ay^2+az^2)` ke buffer per device
-2. Setelah **50 sample** terkumpul → 14 fitur di-extract → di-scale → model predict
-3. Jika confidence < **60%** → label "Unknown", fallback ke conventional risk
-4. Jika confidence >= **60%** → label AI digunakan, risk level dari risk map kelas
+1. Bridge mengakumulasi **magnitude accel** `sqrt(ax^2+ay^2+az^2)` ke buffer per device.
+2. Setelah **10 sample** terkumpul → 14 fitur di-extract → di-scale dengan `scaler.pkl` → model predict via `vibration_classifier.pkl`.
+3. Jika confidence < **60%** atau AI fallback → sistem menggunakan `conventional_risk` berdasarkan threshold DB Supabase.
+4. **Logika Hybrid Risk (Worst-Case / Safety Net)**:
+   Sistem mengambil risiko tertinggi (`max(conventional_risk, ai_risk)`) berdasarkan bobot risiko (`low: 0`, `medium: 1`, `high: 2`, `critical: 3`):
+   - **AI Menang**: Jika AI mendeteksi *"Sabotage"* atau *"Earthquake"* (High Risk), status otomatis menjadi **HIGH**, meskipun getaran fisiknya masih di bawah threshold.
+   - **Threshold Menang (Safety Net Fisik)**: Jika AI mendeteksi *"Normal/AC"* atau *"Footsteps"* (Low Risk), TAPI guncangan fisik melebihi threshold critical DB, sistem mengabaikan penilaian AI dan tetap menetapkan status **HIGH**.
+   - **Fallback/Offline**: Jika model AI mati atau error, sistem kembali 100% mengandalkan threshold DB Supabase.
 
 **Contoh metadata yang tersimpan di `vibration_data.metadata`:**
 
@@ -399,7 +413,7 @@ python 2_model_trainer.py
   "ai_label": "Earthquake",
   "ai_confidence": 0.87,
   "ai_fallback": false,
-  "ai_window_size": 50
+  "ai_window_size": 10
 }
 ```
 
@@ -419,20 +433,23 @@ Sistem menggunakan **EMQX Public Broker** (`broker.emqx.io:1883`) sebagai defaul
 | Protocol | MQTT 3.1.1 |
 | Autentikasi | Tidak diperlukan (public) |
 
-### Struktur Topic MQTT
+### Struktur & Matriks Topic MQTT
 
 Format topic: `<device_token>/<sensor_type>`
 
-```
-tok_esp32_temp_alpha_001/Temp     <- Data suhu dari ESP32 temperature
-tok_esp32_temp_alpha_001/Config   <- Config dari bridge ke ESP32 temp
+| Komponen | Role / Arah Pesan | Topic MQTT | Subscriber (Penerima) | Retain Flag | Description / Purpose |
+|---|---|---|---|---|---|
+| **ESP32 Temp** | Publisher (Out) | `tok_esp32_temp_alpha_001/Temp` | Python Bridge (`+/Temp`) | False | Mengirim data suhu (°C) & kelembaban (%) |
+| **ESP32 Vibra** | Publisher (Out) | `tok_esp32_vib_alpha_001/Accel` | Python Bridge (`+/Accel`) | False | Mengirim data accelerometer (X, Y, Z) |
+| **ESP32 Vibra** | Publisher (Out) | `tok_esp32_vib_alpha_001/Gyro` | Python Bridge (`+/Gyro`) | False | Mengirim data gyroscope (X, Y, Z) |
+| **Bridge → ESP32** | Publisher (Out) | `tok_esp32_temp_alpha_001/Config` | ESP32 Temperature | **True** (Retained) | Push interval & threshold suhu ke ESP32 |
+| **Bridge → ESP32** | Publisher (Out) | `tok_esp32_vib_alpha_001/Config` | ESP32 Vibration | **True** (Retained) | Push interval & threshold getaran ke ESP32 |
 
-tok_esp32_vib_alpha_001/Accel     <- Data accel dari ESP32 vibration
-tok_esp32_vib_alpha_001/Gyro      <- Data gyro dari ESP32 vibration
-tok_esp32_vib_alpha_001/Config    <- Config dari bridge ke ESP32 vib
-```
-
-Bridge subscribe menggunakan **wildcard**: `+/Accel`, `+/Gyro`, `+/Temp`
+> **Penjelasan Wildcard Subscription Single-Level (`+`):**
+> 
+> 1. **`+/Temp`**, **`+/Accel`**, **`+/Gyro`**: Python Bridge mendaftarkan subscription menggunakan wildcard single-level `+` di posisi token device. Hal ini memungkinkan 1 proses Bridge menangani banyak ESP32 shelter sekaligus tanpa perlu hardcode token di kode Bridge.
+> 2. **Sebab Menggunakan `+` Bukan `#`**: Broker publik seperti `broker.emqx.io` memblokir subscription root multi-level `#` demi alasan keamanan dan efisiensi bandwidth.
+> 3. **Pesan Retained Config**: Bridge mem-publish pesan config ke `<token>/Config` dengan flag `retain=True`, sehingga saat ESP32 baru dinyalakan/reconnect, broker akan **langsung memberikan pesan konfigurasi terbaru secara otomatis**.
 
 ### Monitoring MQTT (Testing)
 
@@ -460,9 +477,12 @@ mosquitto_pub -h broker.emqx.io -p 1883 \
 
 ```bash
 cd bridge
-python simulator.py               # Basic simulator
-python simulator_earthquake.py    # Simulasi data gempa bumi
-python simulator_smart.py         # Simulator dengan pola realistis
+python simulator.py               # Basic simulator (random temp & accel)
+python simulator_earthquake.py    # Simulasi gelombang getaran gempa bumi
+python simulator_smart.py         # Simulator dengan transisi pola realistis
+python simulator_advanced.py     # Simulasi skenario multi-device & multi-shelter
+python simulator_direct.py       # Test publish pesan tunggal langsung
+python simulator_guaranteed.py   # Test payload dengan jaminan interval & pairing
 ```
 
 ### Mengganti ke MQTT Broker Sendiri (Private)
@@ -560,7 +580,7 @@ Bridge adalah inti backend sistem. Berjalan sebagai Python process yang selalu a
 | Device Resolution | Mapping `device_token` -> `device_id` + `shelter_id` (cache 5 menit) |
 | Buffer & Pairing | Accel + Gyro di-merge jika keduanya datang dalam 3 detik |
 | Threshold Loading | Load threshold per shelter dari DB (cache 5 menit) |
-| AI Inference | Klasifikasi getaran dengan Random Forest (window 50 sample) |
+| AI Inference | Klasifikasi getaran dengan Random Forest (window 10 sample) |
 | Risk Level Calc | Tentukan low/medium/high berdasarkan threshold shelter |
 | Insert Supabase | Simpan ke `temperature_data` dan `vibration_data` |
 | Alert Generation | Insert ke tabel `alerts` jika risk medium/high |
@@ -586,9 +606,9 @@ MQTT /Gyro  -+
                         v
              hitung magnitude accel
                         |
-             akumulasi AI buffer (50 samples)
+             akumulasi AI buffer (10 samples)
                         |
-             setiap 50 sample:
+             setiap 10 sample:
                -> extract 14 fitur -> scale -> RF predict
                -> update metadata (ai_label, ai_confidence)
                         |
@@ -769,6 +789,8 @@ python src/stage2/stage2_face_recognition.py diagnose
 
 ### Menjalankan Face Recognition
 
+#### 1. Menggunakan Webcam Laptop / USB Camera (OpenCV)
+
 ```bash
 # Windows (quick start)
 start.bat
@@ -788,6 +810,21 @@ python src/stage1/webcam_test.py --recognize --cam-index 1
 # Simpan semua frame otomatis
 python src/stage1/webcam_test.py --recognize --save-all
 ```
+
+#### 2. Menggunakan Raspberry Pi 5 Camera Module 5MP Rev 1.3 (Native `Picamera2`)
+
+Untuk pengujian langsung di perangkat Raspberry Pi 5 menggunakan **Camera Module 5MP Rev 1.3** via `libcamera` / `Picamera2`:
+
+```bash
+cd face_recognition
+
+# Jalankan face recognition live via Pi Camera 2
+python src/pi_camera/pi_camera_test.py
+```
+
+- Modul ini menangkap buffer RGB888 secara native via `picam2.capture_array()`.
+- Jika terdeteksi *unknown person*, snapshot gambar otomatis diunggah ke Supabase Storage (`cctv-evidence`), lalu mencatat alert intrusion di tabel `alerts` dan `cctv_evidence`.
+- Untuk wajah terdaftar (recognized), hanya mencetak log timestamp tanpa mengunggah file gambar (menghemat storage).
 
 **Jalankan Edge Sync Worker di terminal terpisah:**
 
@@ -919,6 +956,29 @@ face_recognition/data/faces/
 | `image_paths` | TEXT[] | Array path foto di bucket `employee-faces` |
 | `is_synced` | BOOLEAN | `false` = belum di-sync ke edge device |
 
+#### `audit_logs` — Jejak Audit Keamanan Sistem
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | FK ke `users.user_id` (pengubah data) |
+| `action` | VARCHAR | `INSERT`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT` |
+| `entity_name` | VARCHAR | Nama tabel / entitas yang diubah |
+| `entity_id` | VARCHAR | ID entitas yang diubah |
+| `old_data` | JSONB | State data sebelum perubahan |
+| `new_data` | JSONB | State data setelah perubahan |
+| `ip_address` | VARCHAR | Alamat IP pengakses |
+| `created_at` | TIMESTAMPTZ | Waktu aktivitas dicatat |
+
+#### `system_settings` — Konfigurasi Sistem Global
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `key` | VARCHAR | Primary Key (nama konfigurasi) |
+| `value` | JSONB | Nilai konfigurasi |
+| `description` | TEXT | Deskripsi parameter |
+| `updated_at` | TIMESTAMPTZ | Waktu terakhir di-update |
+
 ### Storage Buckets
 
 | Bucket | Akses | Isi |
@@ -930,7 +990,14 @@ face_recognition/data/faces/
 
 1. Buat project baru di https://supabase.com
 2. Buka **SQL Editor** di dashboard
-3. Jalankan file `supabase/cloud-setup.sql` (all-in-one) **ATAU** jalankan migrations satu per satu secara berurutan dari `001_init_schema.sql` hingga `fix_vibration_thresholds.sql`
+3. Jalankan file `supabase/cloud-setup.sql` (all-in-one) **ATAU** jalankan migrations satu per satu secara berurutan:
+   ```
+   001_init_schema.sql -> 002_rls_policies.sql -> 003_storage_buckets.sql -> 004_seed_data.sql ->
+   005_migrate_device_types.sql -> 006_auth_trigger.sql -> 007_vibration_thresholds.sql ->
+   008_create_employees_table.sql -> 009_alter_employees_image_paths.sql -> 010_audit_triggers.sql ->
+   011_log_action_rpc.sql -> 012_index_supabase_user_id.sql -> 013_system_settings.sql ->
+   014_enable_realtime.sql -> add_sensor_intervals.sql -> fix_vibration_thresholds.sql
+   ```
 4. Aktifkan Email Auth: **Authentication → Providers → Email → Enable**
 5. Buat user pertama: **Authentication → Users → Add User**
 6. Set role admin:
@@ -962,86 +1029,98 @@ face_recognition/data/faces/
 | XLSX | 0.18 | Export Excel |
 | Lucide React | Latest | Icon set |
 
-### Halaman & Fitur
+### Halaman & Fitur Web Dashboard
 
 #### 1. Login (`/login`)
 
-- Form email + password via Supabase Auth
-- Redirect otomatis ke dashboard jika sudah login
-- Link "Forgot Password" untuk reset via email
+- Form autentikasi Email + Password via Supabase Auth.
+- Validation, error feedback, dan automatic redirect ke dashboard setelah berhasil login.
+- Link "Forgot Password" untuk mengirimkan email reset password.
 
-#### 2. Dashboard (`/`)
+#### 2. Reset Password (`/reset-password`)
 
-- **Shelter Selector** — dropdown pilih shelter yang dipantau
-- **3 Risk Level Cards** — Temperature / Humidity / Vibration (LOW/MEDIUM/HIGH)
-- **3 Gauge Cards** — Suhu (C), Kelembaban (%), Getaran (g) dengan marker threshold warning/critical
-- **Time Range Selector** — 30m, 1h, 3h, 6h, 12h, 24h
-- **Chart Trends** — Temperature, Humidity, Vibration (real-time append, no full reload)
-- **AI Vibration Card** — Label AI terakhir + confidence (Normal/Footsteps/Sabotage/Vehicle/Earthquake)
-- **CCTV Feed** — Snapshot terakhir yang tertangkap saat unknown person terdeteksi
-- **Auto-refresh** — Lightweight polling setiap 3 detik (hanya latest reading)
+- Halaman reset kata sandi berbasis token konfirmasi dari email Supabase Auth.
+- Input password baru + konfirmasi password dengan validasi kekuatan password.
 
-#### 3. Alerts (`/alerts`)
+#### 3. Dashboard (`/`)
 
-- **Multi-filter**: Status (all/open/acknowledged/closed), Type, Severity, Shelter, Search query
-- **Pagination** 10 alert per halaman
-- **Detail Modal** dengan info lengkap alert
-- **Actions**:
-  - Acknowledge → ubah status + catat `acknowledged_at`
-  - Close → ubah status + input `resolution_notes`
-- Alert type icons: Temperature | Vibration | Intrusion | Offline
+- **Shelter Selector** — Dropdown real-time untuk memilih lokasi shelter yang sedang dipantau.
+- **3 Risk Level Cards** — Indicator status terkini Temperature, Humidity, dan Vibration (`LOW` / `MEDIUM` / `HIGH`).
+- **3 Gauge Cards** — Visualisasi radial gauge untuk Suhu (°C), Kelembaban (%), dan Magnitude Getaran (g) lengkap dengan marker batas threshold warning/critical.
+- **Time Range Selector** — Pilihan interval waktu grafik (30m, 1h, 3h, 6h, 12h, 24h).
+- **Chart Trends** — Grafik linier real-time Sensor Temperature, Humidity, dan Vibration (append data tanpa reload).
+- **AI Vibration Card** — Menampilkan hasil klasifikasi AI getaran terbaru, tingkat confidence (%), dan status fallback.
+- **CCTV Feed** — Snapshot CCTV real-time dari tangkapan terdekat saat terdeteksi *unrecognized person*.
+- **Alert Feed & Status Card** — Ticker alert cepat dan ringkasan status kesehatan seluruh perangkat IoT shelter.
+- **Auto-Refresh** — Polling ringan setiap 3 detik hanya untuk memperbarui data sensor terbaru.
 
-#### 4. Evidence (`/evidence`)
+#### 4. Alerts (`/alerts`)
 
-- **Grid snapshot CCTV** (3 kolom, 9 per halaman)
-- Filter per shelter
-- **Hover overlay**: alert type, nama shelter, waktu capture
-- **Fullscreen Lightbox** — klik gambar untuk tampil fullscreen, klik lagi untuk tutup
+- **Multi-Filter**: Filter berdasarkan Status (`all`/`open`/`acknowledged`/`closed`), Alert Type (`temp`/`vibration`/`intrusion`/`offline`), Severity (`warning`/`critical`), Shelter, dan pencarian teks.
+- **Pagination**: 10 rekord alert per halaman.
+- **Detail Modal**: Menampilkan informasi lengkap penyebab alert, sensor pengirim, dan metadata AI.
+- **Tindakan Penanganan (Actions)**:
+  - *Acknowledge*: Mengubah status alert dari `open` → `acknowledged` dan mencatat timestamp `acknowledged_at`.
+  - *Close*: Mengubah status alert → `closed` serta menginput catatan penanganan (`resolution_notes`) dari teknisi.
 
-#### 5. Devices (`/devices`)
+#### 5. Evidence (`/evidence`)
 
-- List semua device dengan icon per type (Temperature / Vibration / Camera)
-- **Status badges**: Active / Inactive / Maintenance
-- **Last Seen** timestamp relatif ("2 menit lalu")
-- **Detail modal** — info device + 10 pembacaan terakhir
-- **CRUD** (admin only): Add / Edit / Delete device
-- Filter per shelter
+- **Grid Snapshot CCTV**: Tampilan galeri foto bukti intrusi kamera 3 kolom (9 snapshot per halaman).
+- **Filter Shelter**: Memilih galeri snapshot berdasarkan shelter.
+- **Hover Overlay**: Menampilkan nama shelter, waktu penangkapan, dan jumlah wajah terdeteksi.
+- **Fullscreen Lightbox**: Modul visualizer gambar ukuran penuh saat thumbnail diklik.
 
-#### 6. Reports (`/reports`)
+#### 6. Devices (`/devices`)
 
-- Shelter selector
-- **Date Range Picker** (Start Date + End Date)
-- **Quick Presets**: Today, Last 7 Days, Last 30 Days
-- **Export Excel** — file `.xlsx` multi-sheet:
-  - Sheet: Temperature Data
-  - Sheet: Vibration Data
-  - Sheet: Alerts
-- Nama file otomatis: `<ShelterName>_<StartDate>_to_<EndDate>.xlsx`
+- **Daftar Perangkat IoT**: Tabel lengkap perangkat dengan ikon tipe (`Temperature`, `Vibration`, `Camera`).
+- **Status Badges**: Indikator status perangkat (`Active`, `Inactive`, `Maintenance`).
+- **Last Seen Relative**: Timestamp waktu terakhir device terhubung ("2 menit lalu").
+- **Detail Modal**: Menampilkan statistik detail perangkat + 10 riwayat pembacaan sensor terakhir.
+- **CRUD Device (Admin Only)**: Menambah, mengubah token MQTT, atau menghapus perangkat dari sistem.
 
-#### 7. Admin (`/admin`) — 5 Tab
+#### 7. Reports (`/reports`)
 
-**Tab Shelters**: CRUD shelter (nama, lokasi, deskripsi, koordinat lat/lng), pagination 6 per halaman
+- **Shelter Selector**: Memilih shelter untuk laporan.
+- **Date Range Picker**: Pemilih rentang tanggal kustom (Start Date s/d End Date).
+- **Quick Presets**: Tombol cepat untuk rentang `Hari Ini`, `7 Hari Terakhir`, `30 Hari Terakhir`.
+- **Export Excel**: Generasi otomatis file spreadsheet `.xlsx` berisi 3 sheet terpisah:
+  - *Sheet 1*: Temperature & Humidity Data
+  - *Sheet 2*: Vibration Data & AI Classification
+  - *Sheet 3*: Alerts & Resolution History
+- **Penanamaan File Otomatis**: `<NamaShelter>_<TanggalMulai>_to_<TanggalSelesai>.xlsx`.
 
-**Tab Users**: CRUD user, atur role (admin/technician), set Telegram Chat ID per user
+#### 8. Admin Panel (`/admin`) — 5 Tab Utama (Admin Only)
 
-**Tab Thresholds**: Atur threshold per shelter (suhu, kelembaban, getaran, interval sensor)
+- **Tab 1: Shelters**:
+  - CRUD Data Shelter (Nama Shelter, Lokasi, Deskripsi, Koordinat Latitude & Longitude).
+  - Pagination 6 shelter per halaman + Modal Peta/Detail lokasi.
+- **Tab 2: Users**:
+  - Manajemen Pengguna Sistem (Tambah User, Edit Role `admin`/`technician`, Hapus User).
+  - Pengaturan **Telegram Chat ID** per user untuk notifikasi alert personal.
+- **Tab 3: Thresholds**:
+  - Pengaturan nilai Ambang Batas (Threshold) per shelter: Suhu Warning/Critical (°C), Kelembaban Warning/Critical (%), Getaran Warning/Critical (g).
+  - **Sensor Polling Interval**: Pengaturan frekuensi kirim data ESP32 (`1s`, `2s`, `5s`, `10s`, `30s`, `60s`).
+  - *Sync Automatis*: Perubahan threshold/interval di-push oleh bridge ke ESP32 via MQTT dalam waktu <=60 detik.
+- **Tab 4: Face Enrollment**:
+  - Form pendaftaran wajah karyawan baru (Nama & Jabatan/Role dengan autocomplete).
+  - Multi-photo upload dengan preview thumbnail & validasi foto.
+  - *Automated Edge Sync*: Foto disimpan di Supabase Storage `employee-faces` → di-sync otomatis ke Raspberry Pi 5 Edge Device via `sync_employees.py` dalam <=60 detik.
+- **Tab 5: System**:
+  - Ringkasan informasi versi sistem, status server backend, dan statistik database.
 
-> Interval sensor dropdown: 1s / 2s / 5s / 10s / 30s / 60s — perubahan dipush ke ESP32 dalam <=60 detik
+#### 9. Audit Logs (`/audit-logs`) — Admin Only
 
-**Tab Face Enrollment**:
+- **Jejak Audit Keamanan**: Memantau seluruh riwayat aktivitas admin dan perubahan data sistem secara transparan.
+- **Filter Action**: Filter berdasarkan jenis aksi (`ALL`, `INSERT`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`).
+- **Live Search**: Pencarian instan berdasarkan nama user, entitas yang diubah, atau detail aksi.
+- **Real-time Live Stream**: Otomatis memperbarui daftar log saat ada perubahan data di Supabase via Supabase Realtime channel.
+- **JSON Diff Viewer**: Menganalisis perbedaan data sebelum (`old_data`) dan sesudah (`new_data`) perubahan dilakukan.
 
-- Form nama karyawan (autocomplete dari data existing)
-- Field jabatan/role (autocomplete)
-- Multi-foto upload dengan preview thumbnail
-- Submit → upload ke Supabase Storage → insert ke tabel `employees` → edge device auto-sync <=60 detik
+#### 10. Profile (`/profile`)
 
-**Tab System**: Informasi sistem
-
-#### 8. Profile (`/profile`)
-
-- Lihat info akun (nama, email, role)
-- Edit nama dan Telegram Chat ID
-- Ganti password (verifikasi current password terlebih dahulu)
+- Menampilkan informasi profil akun terautentikasi (Nama, Email, Role, ID User).
+- Pengaturan personal nama pengguna dan **Telegram Chat ID**.
+- Formulir penggantian kata sandi (dengan verifikasi password saat ini).
 
 ### File `.env` Frontend
 
@@ -1076,19 +1155,17 @@ Sistem mengirim notifikasi Telegram secara otomatis untuk event **critical**.
 
 ### Kapan Alert Telegram Dikirim
 
-| Event | Kondisi |
-|---|---|
-| Suhu Critical | temperature risk level = `high` |
-| Getaran Critical | vibration risk level = `high` atau `critical` |
+Notifikasi Telegram dikirim untuk level **Warning (Medium)**, **Critical (High)**, dan **Intrusion (CCTV Wajah Tidak Dikenal)**:
 
-**Format pesan:**
+| Event | Status / Severity | Icon | Kondisi Trigger | Format Pesan Telegram |
+|---|---|---|---|---|
+| **Intrusion (CCTV)** | Critical | 🚨 | Terdeteksi *unrecognized person* (`unknown`) di kamera | `🚨 [SHELTER xxxx] CCTV Alert: Unrecognized person detected.<br>Evidence: <public_url>` |
+| **Suhu / Kelembaban** | Warning (Medium) | ⚠️ | Suhu/Kelembaban melebihi threshold warning | `⚠️ [SHELTER xxxx] Environment warning: Temp: 36.5°C (limit: 35.0°C)` |
+| **Suhu / Kelembaban** | Critical (High) | 🚨 | Suhu/Kelembaban melebihi threshold critical | `🚨 [SHELTER xxxx] Environment critical: Temp: 42.3°C (limit: 40.0°C)` |
+| **Getaran** | Warning (Medium) | ⚠️ | Getaran melebihi threshold warning / AI medium risk | `⚠️ [SHELTER xxxx] Vibration warning: magnitude 0.45 g (limit: 0.3 g)` |
+| **Getaran** | Critical (High) | 🚨 | Getaran melebihi threshold critical / AI High Risk | `🚨 [SHELTER xxxx] Vibration critical: magnitude 25.30 g (limit: 20.0 g) \| AI Detected: Earthquake (87%)` |
 
-```
-[SHELTER xxxx] Environment critical: Temp: 42.3C (limit: 40.0C)
-[SHELTER xxxx] Vibration critical: magnitude 25.30 g (limit: 20.0 g) | AI Detected: Earthquake (87%)
-```
-
-> Alert dengan risk level **medium/warning** hanya dicatat di database, **tidak dikirim** ke Telegram.
+> **Catatan Event Normal (`low`):** Data sensor dengan status `low` (normal) hanya disimpan ke time-series database dan **tidak memicu** alert maupun notifikasi Telegram.
 
 ### Multi-User Notification
 
@@ -1266,7 +1343,7 @@ python 2_model_trainer.py
 | Variabel | Contoh | Keterangan |
 |---|---|---|
 | `SUPABASE_URL` | `https://xxxx.supabase.co` | URL project Supabase |
-| `SUPABASE_KEY` | `eyJhbGci...` | Service role key |
+| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_KEY` | `eyJhbGci...` | Service role key (diperlukan sync worker) |
 | `SHELTER_ID` | `uuid-from-db` | UUID shelter untuk kamera ini |
 
 ### `frontend/.env`
@@ -1312,8 +1389,11 @@ Face recognition berjalan lokal pada **Raspberry Pi 5** yang terhubung dengan **
 Jalankan dua proses di terminal terpisah:
 
 ```bash
-# Terminal 1: Face recognition
+# Terminal 1: Face recognition (Webcam / USB Cam)
 python src/stage1/webcam_test.py --recognize --cam-index 0
+
+# ATAU via Pi Camera 5MP Native (Raspberry Pi 5 Picamera2)
+python src/pi_camera/pi_camera_test.py
 
 # Terminal 2: Cloud sync worker
 python src/sync_employees.py

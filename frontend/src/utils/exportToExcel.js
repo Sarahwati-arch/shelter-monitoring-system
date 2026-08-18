@@ -1,32 +1,35 @@
 import * as XLSX from 'xlsx'
 
-export const exportToExcel = (reportData, dateRangeString) => {
+export const exportToExcel = (reportData, dateRangeString, options = {}) => {
+  const { dataType = 'all' } = options
   const { temperature, vibration, alerts } = reportData
 
   // 1. Calculate Executive Summary
   const avgTemp = temperature.length ? (temperature.reduce((sum, d) => sum + d.temperature, 0) / temperature.length).toFixed(2) : 0
   const avgHumid = temperature.length ? (temperature.reduce((sum, d) => sum + (d.humidity || 0), 0) / temperature.length).toFixed(2) : 0
-
-  // For vibration, we use accel_z as an aggregate indicator
   const avgVib = vibration.length ? (vibration.reduce((sum, d) => sum + Math.abs(d.accel_z || 0), 0) / vibration.length).toFixed(2) : 0
 
   const summaryData = [
     { Metric: 'Report Period', Value: dateRangeString },
-    { Metric: 'Total Alerts', Value: alerts.length },
-    { Metric: 'Critical Alerts', Value: alerts.filter(a => a.severity === 'critical').length },
-    { Metric: 'Average Temperature (°C)', Value: avgTemp },
-    { Metric: 'Average Humidity (%)', Value: avgHumid },
-    { Metric: 'Average Vibration Z-Axis (g)', Value: avgVib },
-    { Metric: 'Total Records (Temp/Vib)', Value: `${temperature.length} / ${vibration.length}` },
+    { Metric: 'Data Filter', Value: dataType.toUpperCase() }
   ]
 
+  if (dataType === 'all' || dataType === 'temperature') summaryData.push({ Metric: 'Average Temperature (°C)', Value: avgTemp })
+  if (dataType === 'all' || dataType === 'humidity') summaryData.push({ Metric: 'Average Humidity (%)', Value: avgHumid })
+  if (dataType === 'all' || dataType === 'vibration') summaryData.push({ Metric: 'Average Vibration Z-Axis (g)', Value: avgVib })
+  if (dataType === 'all') {
+    summaryData.push({ Metric: 'Total Alerts', Value: alerts.length })
+    summaryData.push({ Metric: 'Critical Alerts', Value: alerts.filter(a => a.severity === 'critical').length })
+  }
+
   // 2. Format Sensor Data
-  const formattedTemp = temperature.map(d => ({
-    Timestamp: new Date(d.timestamp).toLocaleString(),
-    'Temperature (°C)': d.temperature,
-    'Humidity (%)': d.humidity,
-    'Risk Level': d.risk_level
-  }))
+  const formattedTemp = temperature.map(d => {
+    const row = { Timestamp: new Date(d.timestamp).toLocaleString() }
+    if (dataType === 'all' || dataType === 'temperature') row['Temperature (°C)'] = d.temperature
+    if (dataType === 'all' || dataType === 'humidity') row['Humidity (%)'] = d.humidity
+    row['Risk Level'] = d.risk_level
+    return row
+  })
 
   const formattedVib = vibration.map(d => ({
     Timestamp: new Date(d.timestamp).toLocaleString(),
@@ -37,16 +40,14 @@ export const exportToExcel = (reportData, dateRangeString) => {
   }))
 
   // 3. Format Alerts & Diagnostics
-  const formattedAlerts = alerts.map(a => {
-    return {
-      Timestamp: new Date(a.created_at).toLocaleString(),
-      'Alert Type': a.alert_type,
-      Severity: a.severity,
-      Status: a.status,
-      Message: a.message,
-      'Resolved At': a.resolved_at ? new Date(a.resolved_at).toLocaleString() : '-'
-    }
-  })
+  const formattedAlerts = alerts.map(a => ({
+    Timestamp: new Date(a.created_at).toLocaleString(),
+    'Alert Type': a.alert_type,
+    Severity: a.severity,
+    Status: a.status,
+    Message: a.message,
+    'Resolved At': a.resolved_at ? new Date(a.resolved_at).toLocaleString() : '-'
+  }))
 
   // 4. Format Security Evidence
   const formattedEvidence = alerts
@@ -93,16 +94,28 @@ export const exportToExcel = (reportData, dateRangeString) => {
   }
 
   autoSize(wsSummary)
-  autoSize(wsTemp)
-  autoSize(wsVib)
-  autoSize(wsAlerts)
-  autoSize(wsEvidence)
-
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Executive Summary')
-  XLSX.utils.book_append_sheet(wb, wsTemp, 'Temperature Log')
-  XLSX.utils.book_append_sheet(wb, wsVib, 'Vibration Log')
-  XLSX.utils.book_append_sheet(wb, wsAlerts, 'Alerts')
-  XLSX.utils.book_append_sheet(wb, wsEvidence, 'Security Evidence')
+
+  if (dataType === 'all' || dataType === 'temperature' || dataType === 'humidity') {
+    autoSize(wsTemp)
+    const sheetName = dataType === 'humidity' ? 'Humidity Log' : (dataType === 'temperature' ? 'Temperature Log' : 'Temp & Humidity Log')
+    XLSX.utils.book_append_sheet(wb, wsTemp, sheetName)
+  }
+
+  if (dataType === 'all' || dataType === 'vibration') {
+    autoSize(wsVib)
+    XLSX.utils.book_append_sheet(wb, wsVib, 'Vibration Log')
+  }
+
+  if (dataType !== 'evidence') {
+    autoSize(wsAlerts)
+    XLSX.utils.book_append_sheet(wb, wsAlerts, 'Alerts')
+  }
+
+  if (dataType === 'all' || dataType === 'evidence') {
+    autoSize(wsEvidence)
+    XLSX.utils.book_append_sheet(wb, wsEvidence, 'Security Evidence')
+  }
 
   // Generate File
   XLSX.writeFile(wb, `Shelter_Report_${dateRangeString.replace(/ /g, '_')}.xlsx`)

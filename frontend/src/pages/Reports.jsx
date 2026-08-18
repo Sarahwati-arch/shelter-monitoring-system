@@ -23,6 +23,30 @@ export default function Reports() {
   const [startDate, setStartDate] = useState(defaultStartStr)
   const [endDate, setEndDate] = useState(defaultEndStr)
 
+  const [dataType, setDataType] = useState('all')
+  const [criteria, setCriteria] = useState('all')
+  const [period, setPeriod] = useState('week')
+
+  // Reset criteria when data type changes
+  useEffect(() => {
+    setCriteria('all')
+  }, [dataType])
+
+  // Update dates when period preset changes
+  useEffect(() => {
+    if (period === 'custom') return
+    
+    const end = new Date()
+    const start = new Date()
+    
+    if (period === 'week') start.setDate(end.getDate() - 7)
+    else if (period === 'month') start.setMonth(end.getMonth() - 1)
+    else if (period === 'year') start.setFullYear(end.getFullYear() - 1)
+    
+    setEndDate(end.toISOString().split('T')[0])
+    setStartDate(start.toISOString().split('T')[0])
+  }, [period])
+
   useEffect(() => {
     if (!sheltersLoaded) {
       fetchShelters().then((data) => {
@@ -33,14 +57,7 @@ export default function Reports() {
     }
   }, [])
 
-  const setPreset = (days) => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(end.getDate() - days)
-    
-    setEndDate(end.toISOString().split('T')[0])
-    setStartDate(start.toISOString().split('T')[0])
-  }
+
 
   const handleGenerateReport = async () => {
     if (!selectedShelter || !startDate || !endDate) return
@@ -50,7 +67,8 @@ export default function Reports() {
       const reportData = await reportService.fetchReportData(
         selectedShelter, 
         startDate, 
-        endDate
+        endDate,
+        { dataType, criteria }
       )
       
       const shelterName = shelters.find(s => s.shelter_id === selectedShelter)?.shelter_name || 'Shelter'
@@ -58,7 +76,7 @@ export default function Reports() {
       // Format display dates
       const dateRangeString = `${startDate} to ${endDate}`
       
-      exportToExcel(reportData, `${shelterName}_${dateRangeString}`)
+      exportToExcel(reportData, `${shelterName}_${dateRangeString}`, { dataType })
     } catch (error) {
       console.error('Failed to generate report', error)
       alert('Failed to generate report. Please try again.')
@@ -90,62 +108,98 @@ export default function Reports() {
           />
         </div>
 
-        {/* Date Range Selection */}
-        <div className="space-y-4">
-          <label className="text-sm font-medium text-surface-300">Date Range</label>
-          
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 space-y-2">
-              <label className="text-xs text-surface-500">Start Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-500" />
-                <input 
-                  type="date" 
-                  value={startDate}
-                  max={endDate}
-                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full cursor-pointer rounded-lg border border-surface-700 bg-surface-900 py-2 pl-9 pr-4 text-sm text-surface-200 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 [&::-webkit-calendar-picker-indicator]:hidden"
-                />
-              </div>
-            </div>
-            <div className="flex-1 space-y-2">
-              <label className="text-xs text-surface-500">End Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-500" />
-                <input 
-                  type="date" 
-                  value={endDate}
-                  min={startDate}
-                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full cursor-pointer rounded-lg border border-surface-700 bg-surface-900 py-2 pl-9 pr-4 text-sm text-surface-200 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 [&::-webkit-calendar-picker-indicator]:hidden"
-                />
-              </div>
-            </div>
+        {/* Filter Selection Row */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-surface-300">Data Type</label>
+            <Dropdown
+              value={dataType}
+              onChange={setDataType}
+              options={[
+                { label: 'All Data', value: 'all' },
+                { label: 'Temperature Only', value: 'temperature' },
+                { label: 'Humidity Only', value: 'humidity' },
+                { label: 'Vibration Only', value: 'vibration' },
+                { label: 'Security Evidence Only', value: 'evidence' },
+              ]}
+              className="w-full"
+            />
           </div>
-
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setPreset(0)}
-              className="px-3 py-1 text-xs rounded-full bg-surface-800 text-surface-300 hover:bg-surface-700 hover:text-white transition-colors"
-            >
-              Today
-            </button>
-            <button 
-              onClick={() => setPreset(7)}
-              className="px-3 py-1 text-xs rounded-full bg-surface-800 text-surface-300 hover:bg-surface-700 hover:text-white transition-colors"
-            >
-              Last 7 Days
-            </button>
-            <button 
-              onClick={() => setPreset(30)}
-              className="px-3 py-1 text-xs rounded-full bg-surface-800 text-surface-300 hover:bg-surface-700 hover:text-white transition-colors"
-            >
-              Last 30 Days
-            </button>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-surface-300">Risk Criteria</label>
+            <Dropdown
+              value={criteria}
+              onChange={setCriteria}
+              options={
+                dataType === 'evidence' 
+                  ? [
+                      { label: 'All Criteria', value: 'all' },
+                      { label: 'Recognized Person', value: 'recognized' },
+                      { label: 'Unrecognized Person', value: 'unrecognized' },
+                    ]
+                  : [
+                      { label: 'All Criteria', value: 'all' },
+                      { label: 'Low (Sensor Risk)', value: 'low' },
+                      { label: 'Medium (Sensor Risk)', value: 'medium' },
+                      { label: 'High (Sensor Risk)', value: 'high' },
+                      { label: 'Warning (Alert Severity)', value: 'warning' },
+                      { label: 'Critical (Alert Severity)', value: 'critical' },
+                    ]
+              }
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-surface-300">Period</label>
+            <Dropdown
+              value={period}
+              onChange={setPeriod}
+              options={[
+                { label: 'Last 7 Days', value: 'week' },
+                { label: 'Last 30 Days', value: 'month' },
+                { label: 'Last 365 Days', value: 'year' },
+                { label: 'Custom Range', value: 'custom' },
+              ]}
+              className="w-full"
+            />
           </div>
         </div>
+
+        {/* Date Range Selection (Only show if custom) */}
+        {period === 'custom' && (
+          <div className="space-y-4 animate-[slide-down_0.2s_ease-out]">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 space-y-2">
+                <label className="text-xs text-surface-500">Start Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-500" />
+                  <input 
+                    type="date" 
+                    value={startDate}
+                    max={endDate}
+                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full cursor-pointer rounded-lg border border-surface-700 bg-surface-900 py-2 pl-9 pr-4 text-sm text-surface-200 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 [&::-webkit-calendar-picker-indicator]:hidden"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 space-y-2">
+                <label className="text-xs text-surface-500">End Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-500" />
+                  <input 
+                    type="date" 
+                    value={endDate}
+                    min={startDate}
+                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full cursor-pointer rounded-lg border border-surface-700 bg-surface-900 py-2 pl-9 pr-4 text-sm text-surface-200 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 [&::-webkit-calendar-picker-indicator]:hidden"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="pt-4 border-t border-surface-800 flex justify-end">

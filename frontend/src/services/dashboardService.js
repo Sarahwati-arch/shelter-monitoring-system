@@ -365,7 +365,7 @@ export const dashboardService = {
       .from('cctv_evidence')
       .select(`
         *,
-        alerts!inner (
+        alerts (
           shelter_id,
           alert_type
         )
@@ -393,7 +393,7 @@ export const dashboardService = {
       .from('cctv_evidence')
       .select(`
         *,
-        alerts!inner (
+        alerts (
           shelter_id,
           alert_type,
           shelters (shelter_name)

@@ -240,7 +240,7 @@ export default function Devices() {
             value={selectedShelter || ''}
             onChange={(val) => setSelectedShelter(val || null)}
             options={[
-              { label: 'All Shelters', value: '' },
+              ...(shelters.length > 1 ? [{ label: 'All Shelters', value: '' }] : []),
               ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
             ]}
             className="w-48"

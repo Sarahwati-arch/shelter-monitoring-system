@@ -167,10 +167,10 @@ export default function Alerts() {
 
           {/* Shelter */}
           <Dropdown
-            value={shelterFilter || 'all'}
+            value={shelterFilter || (shelters.length === 1 ? shelters[0].shelter_id : 'all')}
             onChange={(val) => setShelterFilter(val === 'all' ? null : val)}
             options={[
-              { label: 'All Shelters', value: 'all' },
+              ...(shelters.length > 1 ? [{ label: 'All Shelters', value: 'all' }] : []),
               ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
             ]}
             className="w-48"

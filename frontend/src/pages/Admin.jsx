@@ -625,6 +625,8 @@ function ThresholdsTab() {
 }
 
 function UsersTab() {
+  const { shelters } = useDataStore()
+
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   
@@ -633,10 +635,13 @@ function UsersTab() {
 
   // Modal state
   const [showModal, setShowModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(null)
+  const [userToDelete, setUserToDelete] = useState(null)
+  
   const [formSaving, setFormSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [progressStep, setProgressStep] = useState('')
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'admin' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'admin', assigned_shelter_id: '' })
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -662,7 +667,7 @@ function UsersTab() {
   }, [users, currentPage, totalPages])
 
   const openModal = () => {
-    setForm({ name: '', email: '', password: '', role: 'admin' })
+    setForm({ name: '', email: '', password: '', role: 'admin', assigned_shelter_id: '' })
     setFormError('')
     setProgressStep('')
     setShowModal(true)
@@ -722,6 +727,46 @@ function UsersTab() {
     }
   }
 
+  const handleUpdateUser = async (e) => {
+    e.preventDefault()
+    setFormError('')
+    if (!form.name.trim()) {
+      setFormError('Name is required.')
+      return
+    }
+
+    setFormSaving(true)
+    setProgressStep('Updating user...')
+    try {
+      const updatedUser = await dashboardService.updateUser(showEditModal.supabase_user_id, {
+        name: form.name,
+        role: form.role,
+        assigned_shelter_id: form.role === 'technician' ? form.assigned_shelter_id : null
+      })
+      
+      setUsers((prev) => prev.map(u => u.supabase_user_id === updatedUser.supabase_user_id ? updatedUser : u))
+      setShowEditModal(null)
+    } catch (err) {
+      setFormError(err.message || 'Failed to update user.')
+    } finally {
+      setFormSaving(false)
+      setProgressStep('')
+    }
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return
+    try {
+      await dashboardService.deleteUser(userToDelete.supabase_user_id)
+      setUsers((prev) => prev.filter(u => u.supabase_user_id !== userToDelete.supabase_user_id))
+    } catch (err) {
+      console.error(err)
+      alert('Failed to delete user: ' + err.message)
+    } finally {
+      setUserToDelete(null)
+    }
+  }
+
   if (loading) return <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary-500" />
 
   return (
@@ -739,6 +784,8 @@ function UsersTab() {
               <th className="px-6 py-3">Name</th>
               <th className="px-6 py-3">Email</th>
               <th className="px-6 py-3">Role</th>
+              <th className="px-6 py-3">Shelter</th>
+              <th className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-800/30">
@@ -749,10 +796,44 @@ function UsersTab() {
                 <td className="px-6 py-4">
                   <span className="badge badge-primary uppercase text-[10px]">{u.role}</span>
                 </td>
+                <td className="px-6 py-4 text-surface-400">
+                  {u.role === 'technician' ? (u.shelters?.shelter_name || 'Unassigned') : 'All Shelters'}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      className="rounded bg-surface-800 px-3 py-1.5 text-xs font-medium text-primary-400 hover:bg-surface-700 hover:text-primary-300 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setForm({
+                          name: u.name,
+                          email: u.email,
+                          password: '',
+                          role: u.role,
+                          assigned_shelter_id: u.assigned_shelter_id || ''
+                        })
+                        setShowEditModal(u)
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded bg-danger-500/10 px-3 py-1.5 text-xs font-medium text-danger-400 hover:bg-danger-500/20 hover:text-danger-300 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setUserToDelete(u)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan="3" className="px-6 py-10 text-center text-surface-500">
+                <td colSpan="5" className="px-6 py-10 text-center text-surface-500">
                   No users found in database.
                 </td>
               </tr>
@@ -822,13 +903,26 @@ function UsersTab() {
                 <label className="mb-1.5 block text-xs font-medium text-surface-400">Role</label>
                 <Dropdown
                   value={form.role}
-                  onChange={(val) => setForm({ ...form, role: val })}
+                  onChange={(val) => setForm({ ...form, role: val, assigned_shelter_id: '' })}
                   options={[
                     { label: 'Admin', value: 'admin' },
                     { label: 'Technician', value: 'technician' },
                   ]}
                 />
               </div>
+              {form.role === 'technician' && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-surface-400">Assigned Shelter</label>
+                  <Dropdown
+                    value={form.assigned_shelter_id}
+                    onChange={(val) => setForm({ ...form, assigned_shelter_id: val })}
+                    options={[
+                      { label: 'Select a shelter...', value: '' },
+                      ...shelters.map(s => ({ label: s.shelter_name, value: s.shelter_id }))
+                    ]}
+                  />
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button
@@ -862,6 +956,129 @@ function UsersTab() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowEditModal(null)}
+        >
+          <div
+            className="glass-card w-full max-w-md p-6 animate-[slide-up_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-4 text-sm font-semibold text-surface-200">Edit User</h3>
+
+            {formError && (
+              <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-500/10 px-3 py-2 text-xs text-danger-400">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateUser} className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-surface-400">Full Name</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Enter full name"
+                  className="input"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-surface-400">Email (Cannot be changed)</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  disabled
+                  className="input opacity-50 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-surface-400">Role</label>
+                <Dropdown
+                  value={form.role}
+                  onChange={(val) => setForm({ ...form, role: val, assigned_shelter_id: '' })}
+                  options={[
+                    { label: 'Admin', value: 'admin' },
+                    { label: 'Technician', value: 'technician' },
+                  ]}
+                />
+              </div>
+              {form.role === 'technician' && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-surface-400">Assigned Shelter</label>
+                  <Dropdown
+                    value={form.assigned_shelter_id}
+                    onChange={(val) => setForm({ ...form, assigned_shelter_id: val })}
+                    options={[
+                      { label: 'Select a shelter...', value: '' },
+                      ...shelters.map(s => ({ label: s.shelter_name, value: s.shelter_id }))
+                    ]}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(null)}
+                  className="btn btn-ghost flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={formSaving}
+                  className="btn btn-primary flex-1"
+                >
+                  {formSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {userToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setUserToDelete(null)}
+        >
+          <div
+            className="glass-card w-full max-w-sm p-6 text-center animate-[slide-up_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-500/10 text-danger-500">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-surface-100">Delete User</h3>
+            <p className="mb-6 text-sm text-surface-400">
+              Are you sure you want to delete <span className="font-medium text-surface-200">{userToDelete.name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                className="btn btn-ghost flex-1"
+                onClick={() => setUserToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn flex-1 bg-danger-500/10 text-danger-500 hover:bg-danger-500/20"
+                onClick={confirmDeleteUser}
+              >
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -929,7 +1146,23 @@ function SystemTab() {
   return (
     <div className="space-y-4">
       <div className="glass-card p-5">
-        <h3 className="mb-3 text-sm font-semibold text-surface-200">System Status</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-surface-200">System Status</h3>
+          <button 
+            className="btn btn-ghost py-1 text-xs"
+            onClick={() => {
+              setEditForm({
+                retention_sensor_data_days: sensorDays,
+                retention_alerts_days: alertsDays,
+                retention_evidence_days: evidenceDays,
+                telegram_bot_active: isTgActive
+              })
+              setShowEditModal(true)
+            }}
+          >
+            Edit Settings
+          </button>
+        </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg bg-surface-900/50 p-3">
             <p className="text-[10px] uppercase tracking-wider text-surface-500">Database</p>
@@ -957,29 +1190,6 @@ function SystemTab() {
           </div>
         </div>
       </div>
-      
-      <div className="glass-card p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-surface-200">Data Retention</h3>
-          <button 
-            className="btn btn-ghost py-1 text-xs"
-            onClick={() => {
-              setEditForm({
-                retention_sensor_data_days: sensorDays,
-                retention_alerts_days: alertsDays,
-                retention_evidence_days: evidenceDays,
-                telegram_bot_active: isTgActive
-              })
-              setShowEditModal(true)
-            }}
-          >
-            Edit Settings
-          </button>
-        </div>
-        <p className="text-xs text-surface-400">
-          Sensor data: {sensorDays} days • Alerts: {alertsDays} days • Evidence: {evidenceDays} days
-        </p>
-      </div>
 
       {/* Edit System Settings Modal */}
       {showEditModal && (
@@ -999,37 +1209,6 @@ function SystemTab() {
             </div>
             
             <form onSubmit={handleUpdateSettings} className="space-y-4">
-              <div className="space-y-3 border-b border-surface-700/50 pb-4">
-                <h4 className="text-xs font-semibold text-surface-300 uppercase tracking-wider">Data Retention (Days)</h4>
-                <div>
-                  <label className="mb-1 block text-xs text-surface-400">Sensor Data (Temperature, Vibration)</label>
-                  <input
-                    type="number" min="1" required
-                    value={editForm.retention_sensor_data_days}
-                    onChange={(e) => setEditForm({ ...editForm, retention_sensor_data_days: e.target.value })}
-                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-surface-400">Alerts</label>
-                  <input
-                    type="number" min="1" required
-                    value={editForm.retention_alerts_days}
-                    onChange={(e) => setEditForm({ ...editForm, retention_alerts_days: e.target.value })}
-                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-surface-400">CCTV Evidence</label>
-                  <input
-                    type="number" min="1" required
-                    value={editForm.retention_evidence_days}
-                    onChange={(e) => setEditForm({ ...editForm, retention_evidence_days: e.target.value })}
-                    className="w-full rounded-lg border border-surface-700 bg-surface-800/50 px-3 py-2 text-sm text-surface-200 outline-none focus:border-primary-500"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-semibold text-surface-300 uppercase tracking-wider">Integrations</h4>
                 <div className="flex items-center gap-2">

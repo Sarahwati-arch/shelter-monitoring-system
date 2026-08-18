@@ -160,10 +160,10 @@ export default function Evidence() {
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-surface-500" />
           <Dropdown
-            value={selectedShelter || ''}
-            onChange={(val) => setSelectedShelter(val)}
+            value={selectedShelter || (shelters.length === 1 ? shelters[0].shelter_id : 'all')}
+            onChange={(val) => setSelectedShelter(val === 'all' ? null : val)}
             options={[
-              { label: 'All Shelters', value: 'all' },
+              ...(shelters.length > 1 ? [{ label: 'All Shelters', value: 'all' }] : []),
               ...shelters.map((s) => ({ label: s.shelter_name, value: s.shelter_id }))
             ]}
             className="w-48"

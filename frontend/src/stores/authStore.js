@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { useDataStore } from '@/stores/dataStore'
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -99,6 +100,9 @@ export const useAuthStore = create((set, get) => ({
     const { error: rpcError } = await supabase.rpc('log_user_action', { p_action: 'LOGOUT' })
     if (rpcError) console.error('Error logging logout:', rpcError)
     
+    // Clear global data cache so the next user doesn't see stale data
+    useDataStore.getState().reset()
+
     await supabase.auth.signOut()
     set({ user: null, profile: null, token: null })
   }

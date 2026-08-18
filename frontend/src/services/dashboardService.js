@@ -41,6 +41,16 @@ export const dashboardService = {
       return orderA - orderB
     })
 
+    // Defense in depth: Client-side filtering based on user metadata
+    const { data: sessionData } = await supabase.auth.getSession()
+    const user = sessionData?.session?.user
+    
+    // Check if user is a technician and has an assigned shelter
+    if (user?.user_metadata?.role === 'technician' && user.user_metadata.assigned_shelter_id) {
+      const assignedId = user.user_metadata.assigned_shelter_id
+      return sortedData.filter(s => s.shelter_id === assignedId)
+    }
+
     return sortedData
   },
 
@@ -484,7 +494,7 @@ export const dashboardService = {
   async getUsers() {
     const { data, error } = await supabase
       .from('users')
-      .select('user_id, name, email, role, telegram_chat_id, created_at')
+      .select('user_id, supabase_user_id, name, email, role, telegram_chat_id, created_at, assigned_shelter_id, shelters (shelter_name)')
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -505,6 +515,38 @@ export const dashboardService = {
       return result.data
     } catch (err) {
       console.error('Invoke error:', err)
+      throw err
+    }
+  },
+
+  /**
+   * Update an existing user
+   */
+  async updateUser(user_id, { name, role, assigned_shelter_id }) {
+    try {
+      const result = await supabase.functions.invoke('update-user', {
+        body: { user_id, name, role, assigned_shelter_id }
+      })
+      if (result.error) throw result.error
+      return result.data
+    } catch (err) {
+      console.error('Invoke update-user error:', err)
+      throw err
+    }
+  },
+
+  /**
+   * Delete a user
+   */
+  async deleteUser(user_id) {
+    try {
+      const result = await supabase.functions.invoke('delete-user', {
+        body: { user_id }
+      })
+      if (result.error) throw result.error
+      return result.data
+    } catch (err) {
+      console.error('Invoke delete-user error:', err)
       throw err
     }
   },

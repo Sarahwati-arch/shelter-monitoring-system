@@ -20,7 +20,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Client using caller's JWT to verify identity
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -34,7 +33,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Check caller is admin in users table
     const { data: callerProfile } = await supabaseClient
       .from('users')
       .select('role')
@@ -48,26 +46,25 @@ Deno.serve(async (req) => {
     }
 
     // 2. Parse request body
-    const { name, email, password, role, assigned_shelter_id } = await req.json()
+    const { user_id, name, role, assigned_shelter_id } = await req.json()
 
-    if (!name || !email || !password) {
-      return new Response(JSON.stringify({ error: 'name, email, and password are required' }), {
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: 'user_id is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // 3. Create user in Supabase Auth using admin client (service role key)
+    // 3. Update user in Supabase Auth using admin client (service role key)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Skip email confirmation
-      user_metadata: { name, role: role || 'admin', assigned_shelter_id }
-    })
+    // Update Auth Metadata
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      user_id,
+      { user_metadata: { name, role: role || 'admin', assigned_shelter_id } }
+    )
 
     if (authError) {
       return new Response(JSON.stringify({ error: authError.message }), {
@@ -75,24 +72,27 @@ Deno.serve(async (req) => {
       })
     }
 
-    // 4. Fetch the profile created by the database trigger
-    // Wait briefly for the trigger to complete (usually instant, but just in case)
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    const { data: newUser, error: fetchError } = await supabaseAdmin
+    // 4. Update the profile in the public.users table directly
+    // Since we don't have an ON UPDATE trigger, we do it manually.
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from('users')
-      .select('*')
-      .eq('supabase_user_id', authData.user.id)
+      .update({
+        name,
+        role: role || 'admin',
+        assigned_shelter_id: assigned_shelter_id || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('supabase_user_id', user_id)
+      .select('user_id, name, email, role, telegram_chat_id, created_at, assigned_shelter_id, shelters (shelter_name)')
       .single()
 
-    if (fetchError) {
-      // If we can't find the profile, something went wrong with the trigger
-      return new Response(JSON.stringify({ error: `User created in auth, but failed to retrieve profile: ${fetchError.message}` }), {
+    if (updateError) {
+      return new Response(JSON.stringify({ error: `User metadata updated, but failed to update profile: ${updateError.message}` }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    return new Response(JSON.stringify(newUser), {
+    return new Response(JSON.stringify(updatedUser), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 

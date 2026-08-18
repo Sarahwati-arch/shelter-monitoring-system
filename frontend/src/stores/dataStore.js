@@ -87,4 +87,14 @@ export const useDataStore = create((set, get) => ({
     })
     return { evidenceByShelterId: updated }
   }),
+
+  // ─── Reset store (on logout) ─────────────────────────────────────────────────
+  reset: () => set({
+    shelters: [],
+    sheltersLoaded: false,
+    openAlerts: [],
+    openAlertsLoaded: false,
+    devicesByShelterId: {},
+    evidenceByShelterId: {},
+  }),
 }))

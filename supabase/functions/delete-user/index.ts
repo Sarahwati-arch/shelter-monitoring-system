@@ -20,7 +20,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Client using caller's JWT to verify identity
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -34,7 +33,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Check caller is admin in users table
     const { data: callerProfile } = await supabaseClient
       .from('users')
       .select('role')
@@ -48,51 +46,49 @@ Deno.serve(async (req) => {
     }
 
     // 2. Parse request body
-    const { name, email, password, role, assigned_shelter_id } = await req.json()
+    const { user_id } = await req.json()
 
-    if (!name || !email || !password) {
-      return new Response(JSON.stringify({ error: 'name, email, and password are required' }), {
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: 'user_id is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+    
+    // Prevent self-deletion
+    if (user_id === callerUser.id) {
+        return new Response(JSON.stringify({ error: 'Cannot delete your own account' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+    }
 
-    // 3. Create user in Supabase Auth using admin client (service role key)
+    // 3. Admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Skip email confirmation
-      user_metadata: { name, role: role || 'admin', assigned_shelter_id }
-    })
-
-    if (authError) {
-      return new Response(JSON.stringify({ error: authError.message }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // 4. Fetch the profile created by the database trigger
-    // Wait briefly for the trigger to complete (usually instant, but just in case)
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    const { data: newUser, error: fetchError } = await supabaseAdmin
+    // 4. Delete from public.users first to avoid FK constraint issues since there's no CASCADE
+    const { error: dbError } = await supabaseAdmin
       .from('users')
-      .select('*')
-      .eq('supabase_user_id', authData.user.id)
-      .single()
+      .delete()
+      .eq('supabase_user_id', user_id)
 
-    if (fetchError) {
-      // If we can't find the profile, something went wrong with the trigger
-      return new Response(JSON.stringify({ error: `User created in auth, but failed to retrieve profile: ${fetchError.message}` }), {
+    if (dbError) {
+      return new Response(JSON.stringify({ error: `Failed to delete user profile from database: ${dbError.message}` }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    return new Response(JSON.stringify(newUser), {
+    // 5. Delete from Supabase Auth
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(user_id)
+
+    if (authError) {
+      return new Response(JSON.stringify({ error: `Profile deleted, but failed to delete auth user: ${authError.message}` }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 

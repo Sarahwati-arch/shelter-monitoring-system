@@ -302,7 +302,8 @@ def run(cam_index: int = 0,
     fps         = 0.0
     last_result = {}
     alert_log   = []
-    unknown_present_last_frame = False
+    last_upload_times = {}  # Tracks per-identity upload timestamps to enforce cooldown
+    cooldown_seconds  = 10  # Seconds before capturing another snapshot for the same identity
 
     t_start = datetime.now()
 
@@ -325,24 +326,38 @@ def run(cam_index: int = 0,
                 None
             )
             last_result = result
+            now = datetime.now()
+
+            # Process evidence capture for all detected faces (known or unknown)
+            for face in result.get("faces", []):
+                identity = face.get("identity", "—")
+                if identity == "—":
+                    continue  # Face not recognized yet / unclassified
+
+                is_known  = (identity != "unknown")
+                last_time = last_upload_times.get(identity)
+
+                if last_time is None or (now - last_time).total_seconds() >= cooldown_seconds:
+                    ts       = now.strftime("%Y%m%d_%H%M%S_%f")
+                    filename = f"{identity}_{ts}.jpg"
+                    path     = SNAPSHOT_DIR / filename
+                    cv2.imwrite(str(path), annotated)
+
+                    if is_known:
+                        print(f"  [Evidence Log] Recognized face ({identity})! Capturing snapshot & uploading evidence...")
+                    else:
+                        print("  [Alert] Unknown face detected! Capturing snapshot & creating alert...")
+
+                    # Upload in background thread to avoid freezing camera feed
+                    threading.Thread(
+                        target=upload_snapshot_and_alert,
+                        args=(str(path), filename, result),
+                        kwargs={"is_known": is_known}
+                    ).start()
+
+                    last_upload_times[identity] = now
 
             has_unknown = any(f.get("identity") == "unknown" for f in result.get("faces", []))
-            
-            # Trigger capture ONLY once per detection event
-            if has_unknown and not unknown_present_last_frame:
-                print("  [Alert] Unknown face detected! Capturing snapshot...")
-                
-                # 1. Save locally
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                filename = f"intrusion_{ts}.jpg"
-                path = SNAPSHOT_DIR / filename
-                cv2.imwrite(str(path), annotated)
-                
-                # 2. Upload in background thread to avoid freezing the camera feed
-                threading.Thread(target=upload_snapshot_and_alert, args=(str(path), filename, result)).start()
-
-            unknown_present_last_frame = has_unknown
-
             if has_unknown:
                 alert_log.append(result)
 

@@ -16,7 +16,7 @@ def run_pi(recognize=False, threshold=DEFAULT_THRESHOLD, save_all=False, cooldow
     picam2.start()
     print("Pi camera started. Ctrl+C to stop.\n")
     frame_count = 0
-    last_alert_time = None
+    last_upload_times = {}
     try:
         while True:
             frame_bgr = picam2.capture_array()
@@ -27,24 +27,31 @@ def run_pi(recognize=False, threshold=DEFAULT_THRESHOLD, save_all=False, cooldow
             now = datetime.now()
             result["timestamp"] = now.isoformat()
 
-            has_unknown = any(face["identity"] == "unknown" for face in result["faces"])
+            for face in result.get("faces", []):
+                identity = face.get("identity", "—")
+                if identity == "—":
+                    continue
 
-            for face in result["faces"]:
-                if face["identity"] not in ("unknown", "—"):
-                    print(f"  Recognized: {face['identity']} (conf: {face['rec_conf']:.2f}) — timestamp only, no upload")       
+                is_known  = (identity != "unknown")
+                last_time = last_upload_times.get(identity)
 
-            if has_unknown:
-                if last_alert_time is None or (now - last_alert_time).total_seconds() >= cooldown_seconds:
-                    ts = now.strftime("%Y%m%d_%H%M%S_%f")
-                    filename = f"unknown_{ts}.jpg"
+                if last_time is None or (now - last_time).total_seconds() >= cooldown_seconds:
+                    ts       = now.strftime("%Y%m%d_%H%M%S_%f")
+                    filename = f"{identity}_{ts}.jpg"
                     temp_path = SNAPSHOT_DIR / filename
                     cv2.imwrite(str(temp_path), annotated)
-                    upload_snapshot_and_alert(str(temp_path), filename, result)
+
+                    if is_known:
+                        print(f"  [Evidence Log] Recognized face ({identity})! Uploading evidence...")
+                    else:
+                        print(f"  [Alert] Unknown face detected! Uploading alert & evidence...")
+
+                    upload_snapshot_and_alert(str(temp_path), filename, result, is_known=is_known)
                     try:
                         temp_path.unlink()
                     except OSError as e:
                         print(f"  Failed to delete temp file: {e}")
-                    last_alert_time = now
+                    last_upload_times[identity] = now
 
             if save_all:
                 ts = now.strftime("%Y%m%d_%H%M%S_%f")

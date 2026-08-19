@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from stage1.webcam_test import process_frame, load_recognizer, DEFAULT_THRESHOLD, LOG_DIR, SNAPSHOT_DIR
 from stage1.supabase_uploader import upload_snapshot_and_alert
 
-def run_pi(recognize=False, threshold=DEFAULT_THRESHOLD, save_all=False, cooldown_seconds=10):
+def run_pi(recognize=False, threshold=DEFAULT_THRESHOLD, save_all=False, cooldown_seconds=0):
     recognizer = load_recognizer() if recognize else None
     picam2 = Picamera2()
     config = picam2.create_preview_configuration(main={"size": (640, 480), "format": "RGB888"})
@@ -16,7 +16,6 @@ def run_pi(recognize=False, threshold=DEFAULT_THRESHOLD, save_all=False, cooldow
     picam2.start()
     print("Pi camera started. Ctrl+C to stop.\n")
     frame_count = 0
-    last_upload_times = {}
     try:
         while True:
             frame_bgr = picam2.capture_array()
@@ -32,26 +31,22 @@ def run_pi(recognize=False, threshold=DEFAULT_THRESHOLD, save_all=False, cooldow
                 if identity == "—":
                     continue
 
-                is_known  = (identity != "unknown")
-                last_time = last_upload_times.get(identity)
+                is_known = (identity != "unknown")
+                ts       = now.strftime("%Y%m%d_%H%M%S_%f")
+                filename = f"{identity}_{ts}.jpg"
+                temp_path = SNAPSHOT_DIR / filename
+                cv2.imwrite(str(temp_path), annotated)
 
-                if last_time is None or (now - last_time).total_seconds() >= cooldown_seconds:
-                    ts       = now.strftime("%Y%m%d_%H%M%S_%f")
-                    filename = f"{identity}_{ts}.jpg"
-                    temp_path = SNAPSHOT_DIR / filename
-                    cv2.imwrite(str(temp_path), annotated)
+                if is_known:
+                    print(f"  [Evidence Log] Recognized face ({identity})! Uploading evidence...")
+                else:
+                    print(f"  [Alert] Unknown face detected! Uploading alert & evidence...")
 
-                    if is_known:
-                        print(f"  [Evidence Log] Recognized face ({identity})! Uploading evidence...")
-                    else:
-                        print(f"  [Alert] Unknown face detected! Uploading alert & evidence...")
-
-                    upload_snapshot_and_alert(str(temp_path), filename, result, is_known=is_known)
-                    try:
-                        temp_path.unlink()
-                    except OSError as e:
-                        print(f"  Failed to delete temp file: {e}")
-                    last_upload_times[identity] = now
+                upload_snapshot_and_alert(str(temp_path), filename, result, is_known=is_known)
+                try:
+                    temp_path.unlink()
+                except OSError as e:
+                    print(f"  Failed to delete temp file: {e}")
 
             if save_all:
                 ts = now.strftime("%Y%m%d_%H%M%S_%f")

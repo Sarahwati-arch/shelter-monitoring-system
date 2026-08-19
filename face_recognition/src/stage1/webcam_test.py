@@ -334,28 +334,23 @@ def run(cam_index: int = 0,
                 if identity == "—":
                     continue  # Face not recognized yet / unclassified
 
-                is_known  = (identity != "unknown")
-                last_time = last_upload_times.get(identity)
+                is_known = (identity != "unknown")
+                ts       = now.strftime("%Y%m%d_%H%M%S_%f")
+                filename = f"{identity}_{ts}.jpg"
+                path     = SNAPSHOT_DIR / filename
+                cv2.imwrite(str(path), annotated)
 
-                if last_time is None or (now - last_time).total_seconds() >= cooldown_seconds:
-                    ts       = now.strftime("%Y%m%d_%H%M%S_%f")
-                    filename = f"{identity}_{ts}.jpg"
-                    path     = SNAPSHOT_DIR / filename
-                    cv2.imwrite(str(path), annotated)
+                if is_known:
+                    print(f"  [Evidence Log] Recognized face ({identity})! Capturing snapshot & uploading evidence...")
+                else:
+                    print("  [Alert] Unknown face detected! Capturing snapshot & creating alert...")
 
-                    if is_known:
-                        print(f"  [Evidence Log] Recognized face ({identity})! Capturing snapshot & uploading evidence...")
-                    else:
-                        print("  [Alert] Unknown face detected! Capturing snapshot & creating alert...")
-
-                    # Upload in background thread to avoid freezing camera feed
-                    threading.Thread(
-                        target=upload_snapshot_and_alert,
-                        args=(str(path), filename, result),
-                        kwargs={"is_known": is_known}
-                    ).start()
-
-                    last_upload_times[identity] = now
+                # Upload in background thread to avoid freezing camera feed
+                threading.Thread(
+                    target=upload_snapshot_and_alert,
+                    args=(str(path), filename, result),
+                    kwargs={"is_known": is_known}
+                ).start()
 
             has_unknown = any(f.get("identity") == "unknown" for f in result.get("faces", []))
             if has_unknown:

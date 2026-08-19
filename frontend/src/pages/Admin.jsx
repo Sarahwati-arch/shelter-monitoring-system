@@ -437,11 +437,11 @@ function ThresholdsTab() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Warning</p>
-                    <p className="text-lg font-bold text-amber-400">{t.vibration_warning}g</p>
+                    <p className="text-lg font-bold text-amber-400">{t.vibration_warning}mg</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-surface-500">Vib. Critical</p>
-                    <p className="text-lg font-bold text-red-400">{t.vibration_critical}g</p>
+                    <p className="text-lg font-bold text-red-400">{t.vibration_critical}mg</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-surface-500">Humidity Warning</p>
@@ -474,8 +474,8 @@ function ThresholdsTab() {
                 setEditForm({
                   temp_warning: t?.temp_warning || 35.0,
                   temp_critical: t?.temp_critical || 40.0,
-                  vibration_warning: t?.vibration_warning || 10.0,
-                  vibration_critical: t?.vibration_critical || 20.0,
+                  vibration_warning: t?.vibration_warning || 1500.0,
+                  vibration_critical: t?.vibration_critical || 2500.0,
                   humidity_warning: t?.humidity_warning || 80.0,
                   humidity_critical: t?.humidity_critical || 90.0,
                   temp_interval_ms: t?.temp_interval_ms || 5000,
@@ -554,7 +554,7 @@ function ThresholdsTab() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-surface-400">Vib. Warning (g)</label>
+                  <label className="mb-1 block text-xs text-surface-400">Vib. Warning (mg)</label>
                   <input
                     type="number" step="any" required
                     value={editForm.vibration_warning}
@@ -563,7 +563,7 @@ function ThresholdsTab() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-surface-400">Vib. Critical (g)</label>
+                  <label className="mb-1 block text-xs text-surface-400">Vib. Critical (mg)</label>
                   <input
                     type="number" step="any" required
                     value={editForm.vibration_critical}

@@ -197,10 +197,10 @@ def send_telegram(message: str) -> None:
 
 def calc_risk_level(accel_x: float, accel_y: float, accel_z: float, shelter_id: str) -> str:
     """Calculate risk level based on acceleration magnitude and thresholds."""
-    magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+    magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2) * 1000.0
     thresholds = load_thresholds(shelter_id)
-    vib_critical = thresholds.get("vibration_critical", 20.0)
-    vib_warning = thresholds.get("vibration_warning", 10.0)
+    vib_critical = thresholds.get("vibration_critical", 2500.0)
+    vib_warning = thresholds.get("vibration_warning", 1500.0)
     
     if magnitude >= vib_critical:
         return "high"
@@ -228,7 +228,7 @@ def load_thresholds(shelter_id: str) -> dict:
         print(f"  -> WARN: Could not load thresholds for {shelter_id}: {e}")
 
     # Fallback defaults
-    defaults = {"temp_warning": 35.0, "temp_critical": 40.0, "vibration_warning": 0.3, "vibration_critical": 0.7}
+    defaults = {"temp_warning": 35.0, "temp_critical": 40.0, "vibration_warning": 1500.0, "vibration_critical": 2500.0}
     _threshold_cache[shelter_id] = defaults
     _threshold_cache_ts = now
     return defaults
@@ -304,8 +304,8 @@ def publish_device_configs(mqtt_client) -> None:
         else:  # vibration
             payload_dict = {
                 "vib_interval_ms": intervals["vibration_interval_ms"],
-                "vib_warn": thresholds.get("vibration_warning", 0.3),
-                "vib_crit": thresholds.get("vibration_critical", 0.7)
+                "vib_warn": thresholds.get("vibration_warning", 1500.0),
+                "vib_crit": thresholds.get("vibration_critical", 2500.0)
             }
 
         payload = json.dumps(payload_dict)
@@ -563,12 +563,12 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
 
     # Generate alert if medium, high or critical risk
     if final_risk in ["medium", "high", "critical"]:
-        magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2)
+        magnitude = math.sqrt(accel_x**2 + accel_y**2 + accel_z**2) * 1000.0
         thresholds = load_thresholds(shelter_id)
         
         is_critical = final_risk in ["high", "critical"]
         severity = "critical" if is_critical else "warning"
-        vib_limit = thresholds.get("vibration_critical" if is_critical else "vibration_warning", 20.0)
+        vib_limit = thresholds.get("vibration_critical" if is_critical else "vibration_warning", 2500.0)
         
         ai_label = metadata.get("ai_label", "Unknown")
         ai_conf = metadata.get("ai_confidence", 0.0)
@@ -579,8 +579,8 @@ def insert_vibration(data: dict, shelter_id: str, device_id: str) -> None:
             ai_info = ""
         
         msg = (
-            f"Vibration {severity}: magnitude {magnitude:.2f} g "
-            f"(limit: {vib_limit:.1f} g){ai_info}"
+            f"Vibration {severity}: magnitude {magnitude:.0f} mg "
+            f"(limit: {vib_limit:.0f} mg){ai_info}"
         )
 
         alert = {

@@ -159,7 +159,7 @@ export default function Dashboard() {
       }, (payload) => {
         const row = payload.new
         const vibMag = Number(
-          Math.sqrt(row.accel_x ** 2 + row.accel_y ** 2 + row.accel_z ** 2).toFixed(2)
+          (Math.sqrt(row.accel_x ** 2 + row.accel_y ** 2 + row.accel_z ** 2) * 1000).toFixed(0)
         )
         setLatest((prev) => ({
           ...(prev || {}),
@@ -299,11 +299,11 @@ export default function Dashboard() {
         <GaugeCard
           label="Vibration"
           value={latest?.vibration}
-          unit="g"
+          unit="mg"
           min={0}
-          max={Math.max(4, Math.ceil((thresholds?.vibration_critical || 20.0) * 1.5))}
-          warningThreshold={thresholds?.vibration_warning || 10.0}
-          criticalThreshold={thresholds?.vibration_critical || 20.0}
+          max={10000}
+          warningThreshold={thresholds?.vibration_warning || 1500}
+          criticalThreshold={thresholds?.vibration_critical || 2500}
           icon={Activity}
         />
       </div>

@@ -127,7 +127,7 @@ export const dashboardService = {
 
     // Calculate vibration magnitude sqrt(x^2 + y^2 + z^2)
     const vibrationMagnitude = vibData 
-      ? Number(Math.sqrt(Math.pow(vibData.accel_x, 2) + Math.pow(vibData.accel_y, 2) + Math.pow(vibData.accel_z, 2)).toFixed(2))
+      ? Number((Math.sqrt(Math.pow(vibData.accel_x, 2) + Math.pow(vibData.accel_y, 2) + Math.pow(vibData.accel_z, 2)) * 1000).toFixed(0))
       : null
 
     const now = Date.now()
@@ -241,7 +241,7 @@ export const dashboardService = {
     })
 
     vibData.forEach(v => {
-      const vibrationMagnitude = Number(Math.sqrt(Math.pow(v.accel_x, 2) + Math.pow(v.accel_y, 2) + Math.pow(v.accel_z, 2)).toFixed(2))
+      const vibrationMagnitude = Number((Math.sqrt(Math.pow(v.accel_x, 2) + Math.pow(v.accel_y, 2) + Math.pow(v.accel_z, 2)) * 1000).toFixed(0))
       if (historyMap[v.timestamp]) {
         historyMap[v.timestamp].vibration = vibrationMagnitude
         historyMap[v.timestamp].metadata = v.metadata || {}

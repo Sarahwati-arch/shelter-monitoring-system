@@ -86,8 +86,8 @@ CREATE TABLE thresholds (
     shelter_id UUID UNIQUE REFERENCES shelters(shelter_id) ON DELETE CASCADE,
     temp_warning FLOAT DEFAULT 35.0,
     temp_critical FLOAT DEFAULT 40.0,
-    vibration_warning FLOAT DEFAULT 0.3,
-    vibration_critical FLOAT DEFAULT 0.7,
+    vibration_warning FLOAT DEFAULT 1500.0,
+    vibration_critical FLOAT DEFAULT 2500.0,
     humidity_warning FLOAT DEFAULT 80.0,
     humidity_critical FLOAT DEFAULT 90.0,
     temp_interval_ms INTEGER DEFAULT 5000 CHECK (temp_interval_ms >= 1000 AND temp_interval_ms <= 60000),
@@ -288,12 +288,25 @@ ALTER TABLE thresholds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cctv_evidence ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- ---- Helper Functions for RLS ----
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.users
+    WHERE supabase_user_id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ---- Users ----
 
+-- Allow public lookup so the login page can find the email by name
+CREATE POLICY "Anyone can view users for login" ON users
+    FOR SELECT USING (true);
+
 CREATE POLICY "Admins can view all users" ON users
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND role = 'admin')
-    );
+    FOR SELECT USING ( public.is_admin() );
 
 CREATE POLICY "Users can view own profile" ON users
     FOR SELECT USING (supabase_user_id = auth.uid());
@@ -305,9 +318,7 @@ CREATE POLICY "Users can insert own profile" ON users
     FOR INSERT WITH CHECK (supabase_user_id = auth.uid());
 
 CREATE POLICY "Admins can manage users" ON users
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING ( public.is_admin() );
 
 -- ---- Shelters ----
 
@@ -315,9 +326,7 @@ CREATE POLICY "Authenticated users can view shelters" ON shelters
     FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "Admins can manage shelters" ON shelters
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING ( public.is_admin() );
 
 -- ---- Devices ----
 
@@ -325,9 +334,7 @@ CREATE POLICY "Authenticated users can view devices" ON devices
     FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "Admins can manage devices" ON devices
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING ( public.is_admin() );
 
 -- ---- Temperature Data ----
 
@@ -356,7 +363,7 @@ CREATE POLICY "Authenticated users can view alerts" ON alerts
 CREATE POLICY "Technicians can update assigned alerts" ON alerts
     FOR UPDATE USING (
         EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND user_id = alerts.assigned_to)
-        OR EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND role = 'admin')
+        OR public.is_admin()
     );
 
 -- ---- Thresholds ----
@@ -365,9 +372,7 @@ CREATE POLICY "Authenticated users can view thresholds" ON thresholds
     FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "Admins can manage thresholds" ON thresholds
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING ( public.is_admin() );
 
 -- ---- CCTV Evidence ----
 
@@ -383,9 +388,7 @@ CREATE POLICY "Service can insert audit logs" ON audit_logs
     FOR INSERT WITH CHECK (auth.role() = 'service_role');
 
 CREATE POLICY "Admins can view audit logs" ON audit_logs
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM users WHERE supabase_user_id = auth.uid() AND role = 'admin')
-    );
+    FOR SELECT USING ( public.is_admin() );
 
 -- ============================================================================
 -- 7. STORAGE BUCKET & POLICIES
@@ -403,14 +406,17 @@ VALUES (
     file_size_limit = EXCLUDED.file_size_limit,
     allowed_mime_types = EXCLUDED.allowed_mime_types;
 
+DROP POLICY IF EXISTS "Authenticated users can view evidence" ON storage.objects;
 CREATE POLICY "Authenticated users can view evidence"
     ON storage.objects FOR SELECT
     TO authenticated USING (bucket_id = 'cctv-evidence');
 
+DROP POLICY IF EXISTS "Service role can upload evidence" ON storage.objects;
 CREATE POLICY "Service role can upload evidence"
     ON storage.objects FOR INSERT
     WITH CHECK (bucket_id = 'cctv-evidence' AND auth.role() = 'service_role');
 
+DROP POLICY IF EXISTS "Service role can delete evidence" ON storage.objects;
 CREATE POLICY "Service role can delete evidence"
     ON storage.objects FOR DELETE
     USING (bucket_id = 'cctv-evidence' AND auth.role() = 'service_role');
@@ -435,9 +441,9 @@ ON CONFLICT (shelter_id) DO NOTHING;
 
 -- Sample thresholds
 INSERT INTO thresholds (shelter_id, temp_warning, temp_critical, vibration_warning, vibration_critical, humidity_warning, humidity_critical, temp_interval_ms, vibration_interval_ms) VALUES
-    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 35.0, 40.0, 0.3, 0.7, 80.0, 90.0, 5000, 1000),
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 33.0, 38.0, 0.3, 0.7, 85.0, 95.0, 5000, 1000),
-    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 36.0, 42.0, 0.4, 0.8, 75.0, 85.0, 5000, 1000)
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 35.0, 40.0, 1500.0, 2500.0, 80.0, 90.0, 5000, 1000),
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 33.0, 38.0, 1500.0, 2500.0, 85.0, 95.0, 5000, 1000),
+    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 36.0, 42.0, 1500.0, 2500.0, 75.0, 85.0, 5000, 1000)
 ON CONFLICT (shelter_id) DO NOTHING;
 
 -- Sample devices (2 temperature + 1 vibration + 2 cameras)
@@ -486,3 +492,24 @@ INSERT INTO alerts (shelter_id, alert_type, status, severity, message, created_a
 --   - Authentication > Policies: RLS policies active
 --   - Database > Extensions: uuid-ossp enabled
 -- ============================================================================
+
+-- ============================================================================
+-- 10. RESYNC AUTH.USERS TO PUBLIC.USERS (Fix broken links)
+-- ============================================================================
+-- In case auth.users persisted while public.users was dropped, relink them
+UPDATE public.users p
+SET supabase_user_id = a.id
+FROM auth.users a
+WHERE p.email = a.email;
+
+-- Insert any missing users from auth.users that were not in the seed data
+INSERT INTO public.users (supabase_user_id, name, email, role)
+SELECT 
+    id, 
+    COALESCE(raw_user_meta_data->>'name', split_part(email, '@', 1)), 
+    email, 
+    COALESCE(raw_user_meta_data->>'role', 'technician')
+FROM auth.users
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.users p WHERE p.email = auth.users.email
+);

@@ -28,17 +28,22 @@ export const dashboardService = {
     
     if (error) throw error
 
-    // Custom sort: East -> Central -> West
+    // Custom sort: East -> Central -> West (case-insensitive)
     const order = {
-      'East Jakarta shelter': 1,
-      'Central Jakarta shelter': 2,
-      'West Jakarta shelter': 3
+      'east jakarta shelter': 1,
+      'central jakarta shelter': 2,
+      'west jakarta shelter': 3
     }
 
     const sortedData = (data || []).sort((a, b) => {
-      const orderA = order[a.shelter_name] || 99
-      const orderB = order[b.shelter_name] || 99
-      return orderA - orderB
+      const nameA = (a.shelter_name || '').toLowerCase()
+      const nameB = (b.shelter_name || '').toLowerCase()
+      
+      const orderA = order[nameA] || 99
+      const orderB = order[nameB] || 99
+      
+      if (orderA !== orderB) return orderA - orderB
+      return nameA.localeCompare(nameB)
     })
 
     // Defense in depth: Client-side filtering based on user metadata

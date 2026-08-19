@@ -50,6 +50,7 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     role VARCHAR(20) CHECK (role IN ('admin', 'technician')) DEFAULT 'technician',
     telegram_chat_id VARCHAR(50),
+    assigned_shelter_id UUID REFERENCES shelters(shelter_id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -434,9 +435,9 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- Sample shelters
 INSERT INTO shelters (shelter_id, shelter_name, location, description, latitude, longitude) VALUES
-    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Shelter Jakarta Timur', 'Jakarta Timur', 'Main monitoring shelter near industrial zone', -6.30200000, 107.17100000),
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'Shelter Jakarta Pusat', 'Jakarta Pusat', 'Secondary shelter in agricultural area', -6.32300000, 107.33700000),
-    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'Shelter Jakarta Selatan', 'Jakarta Selatan', 'Warehouse district monitoring point', -6.28500000, 107.15800000)
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'East Jakarta shelter', 'Jakarta Timur', 'Main monitoring shelter near industrial zone', -6.30200000, 107.17100000),
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'Central Jakarta shelter', 'Jakarta Pusat', 'Secondary shelter in agricultural area', -6.32300000, 107.33700000),
+    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'West Jakarta shelter', 'Jakarta Selatan', 'Warehouse district monitoring point', -6.28500000, 107.15800000)
 ON CONFLICT (shelter_id) DO NOTHING;
 
 -- Sample thresholds

@@ -28,8 +28,10 @@ const isRecognizedPerson = (item) => {
     if (filename.startsWith('unknown_') || filename.startsWith('intrusion_')) {
       return false
     }
+    // If it has a custom name prefix (like Sarah_, Victoria_), treat it as recognized
+    return true
   }
-  return !item.alert_id
+  return false
 }
 
 export default function Evidence() {

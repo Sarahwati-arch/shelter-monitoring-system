@@ -12,9 +12,6 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 -- Insert defaults
 INSERT INTO system_settings (key, value, description) VALUES
-    ('retention_sensor_data_days', '90'::jsonb, 'Number of days to keep sensor data (temperature, vibration)'),
-    ('retention_alerts_days', '365'::jsonb, 'Number of days to keep closed alerts'),
-    ('retention_evidence_days', '180'::jsonb, 'Number of days to keep CCTV evidence data'),
     ('telegram_bot_active', 'false'::jsonb, 'Toggle to indicate if Telegram bot is actively configured')
 ON CONFLICT (key) DO NOTHING;
 
@@ -67,27 +64,3 @@ CREATE TRIGGER update_system_settings_updated_at
 -- (cron.schedule will overwrite existing jobs with the same name)
 
 
--- Reschedule them with dynamic queries
-SELECT cron.schedule(
-    'cleanup-temperature-data',
-    '0 2 * * *',
-    $$DELETE FROM temperature_data WHERE timestamp < NOW() - ((SELECT (value#>>'{}')::int FROM system_settings WHERE key = 'retention_sensor_data_days') || ' days')::interval$$
-);
-
-SELECT cron.schedule(
-    'cleanup-vibration-data',
-    '0 2 * * *',
-    $$DELETE FROM vibration_data WHERE timestamp < NOW() - ((SELECT (value#>>'{}')::int FROM system_settings WHERE key = 'retention_sensor_data_days') || ' days')::interval$$
-);
-
-SELECT cron.schedule(
-    'cleanup-old-alerts',
-    '0 3 * * *',
-    $$DELETE FROM alerts WHERE status = 'closed' AND resolved_at < NOW() - ((SELECT (value#>>'{}')::int FROM system_settings WHERE key = 'retention_alerts_days') || ' days')::interval$$
-);
-
-SELECT cron.schedule(
-    'cleanup-old-evidence',
-    '0 4 * * *',
-    $$DELETE FROM cctv_evidence WHERE created_at < NOW() - ((SELECT (value#>>'{}')::int FROM system_settings WHERE key = 'retention_evidence_days') || ' days')::interval$$
-);

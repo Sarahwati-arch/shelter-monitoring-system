@@ -1120,9 +1120,6 @@ function SystemTab() {
     setSubmitting(true)
     try {
       const updates = {
-        retention_sensor_data_days: parseInt(editForm.retention_sensor_data_days, 10),
-        retention_alerts_days: parseInt(editForm.retention_alerts_days, 10),
-        retention_evidence_days: parseInt(editForm.retention_evidence_days, 10),
         telegram_bot_active: editForm.telegram_bot_active
       }
       await dashboardService.updateSystemSettings(updates)
@@ -1138,9 +1135,6 @@ function SystemTab() {
 
   if (loading) return <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary-500" />
 
-  const sensorDays = settings.retention_sensor_data_days || 90
-  const alertsDays = settings.retention_alerts_days || 365
-  const evidenceDays = settings.retention_evidence_days || 180
   const isTgActive = settings.telegram_bot_active || false
 
   return (
@@ -1152,9 +1146,6 @@ function SystemTab() {
             className="btn btn-ghost py-1 text-xs"
             onClick={() => {
               setEditForm({
-                retention_sensor_data_days: sensorDays,
-                retention_alerts_days: alertsDays,
-                retention_evidence_days: evidenceDays,
                 telegram_bot_active: isTgActive
               })
               setShowEditModal(true)

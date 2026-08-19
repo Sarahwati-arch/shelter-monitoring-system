@@ -55,28 +55,3 @@ INSERT INTO alerts (shelter_id, alert_type, status, severity, message, created_a
     ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'offline', 'open', 'warning', 'Device RPi-CAM-Beta has been offline for 30+ minutes', NOW() - INTERVAL '30 minutes'),
     ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'intrusion', 'closed', 'critical', 'Unknown person detected at Shelter Alpha entrance', NOW() - INTERVAL '2 hours'),
     ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'temp', 'closed', 'warning', 'Temperature approaching warning threshold: 34.5°C', NOW() - INTERVAL '3 hours');
-
--- Insert scheduled data retention jobs
-SELECT cron.schedule(
-    'cleanup-temperature-data',
-    '0 2 * * *',
-    $$DELETE FROM temperature_data WHERE timestamp < NOW() - INTERVAL '90 days'$$
-);
-
-SELECT cron.schedule(
-    'cleanup-vibration-data',
-    '0 2 * * *',
-    $$DELETE FROM vibration_data WHERE timestamp < NOW() - INTERVAL '90 days'$$
-);
-
-SELECT cron.schedule(
-    'cleanup-old-alerts',
-    '0 3 * * *',
-    $$DELETE FROM alerts WHERE status = 'closed' AND resolved_at < NOW() - INTERVAL '1 year'$$
-);
-
-SELECT cron.schedule(
-    'cleanup-old-evidence',
-    '0 4 * * *',
-    $$DELETE FROM cctv_evidence WHERE created_at < NOW() - INTERVAL '6 months'$$
-);

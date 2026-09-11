@@ -17,13 +17,19 @@ float alpha = 0.1;
 #define LED_GREEN  27
 #define BUZZER_PIN 5
 
+// GRAVITY CONSTANT (ISO 80000-3 standard gravity, g0)
+#define GRAVITY_STD 9.80665
+
 // VIBRATION THRESHOLDS
-float vibWarning = 1.5;
-float vibCritical = 2.5;
+float vibWarning = 1500.0;
+float vibCritical = 2500.0;
+
+float vibLevelPeak = 0;
+float axPeak = 0, ayPeak = 0, azPeak = 0;
 
 // WIFI & MQTT
-const char* ssid        = "Wifi 2";
-const char* password    = "rb234567";
+const char* ssid        = "your wifi";
+const char* password    = "your wifi password";
 const char* mqtt_server = "broker.emqx.io";
 const int   mqtt_port   = 1883;
 
@@ -89,17 +95,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
   }
 
-  // Update thresholds
   if (doc.containsKey("vib_warn")) {
     vibWarning = doc["vib_warn"].as<float>();
     Serial.print("[Config] Vib Warning updated to: ");
-    Serial.println(vibWarning);
+    Serial.print(vibWarning);
+    Serial.println(" mg");
   }
   
   if (doc.containsKey("vib_crit")) {
     vibCritical = doc["vib_crit"].as<float>();
     Serial.print("[Config] Vib Critical updated to: ");
-    Serial.println(vibCritical);
+    Serial.print(vibCritical);
+    Serial.println(" mg");
   }
 }
 
@@ -215,40 +222,50 @@ void loop() {
   fgy = alpha * gy + (1 - alpha) * fgy;
   fgz = alpha * gz + (1 - alpha) * fgz;
 
-  // Vibration level
-  float vibLevel = sqrt(fax*fax + fay*fay + faz*faz);
+  float ax_ms2 = fax * GRAVITY_STD;
+  float ay_ms2 = fay * GRAVITY_STD;
+  float az_ms2 = faz * GRAVITY_STD;
 
-  updateStatus(vibLevel);
+  float vibLevel_ms2 = sqrt(ax_ms2*ax_ms2 + ay_ms2*ay_ms2 + az_ms2*az_ms2);
+  float vibLevel = (vibLevel_ms2 / GRAVITY_STD) * 1000.0;
+
+  if (vibLevel > vibLevelPeak) {
+    vibLevelPeak = vibLevel;
+    axPeak = fax;
+    ayPeak = fay;
+    azPeak = faz;
+  }
+
+  updateStatus(vibLevelPeak);
   handleBuzzer();
 
-  // NON-BLOCKING TIMER
   unsigned long currentMillis = millis();
   if (currentMillis - lastPublishTime >= sensorInterval) {
     lastPublishTime = currentMillis;
 
     Serial.println("=== VIBRATION DATA ===");
-    Serial.print("accel_x: "); Serial.println(fax, 3);
-    Serial.print("accel_y: "); Serial.println(fay, 3);
-    Serial.print("accel_z: "); Serial.println(faz, 3);
+    Serial.print("accel_x: "); Serial.println(axPeak, 3);
+    Serial.print("accel_y: "); Serial.println(ayPeak, 3);
+    Serial.print("accel_z: "); Serial.println(azPeak, 3);
     Serial.print("gyro_x:  "); Serial.println(fgx, 3);
     Serial.print("gyro_y:  "); Serial.println(fgy, 3);
     Serial.print("gyro_z:  "); Serial.println(fgz, 3);
-    Serial.printf("vibLevel: %.3f | Interval: %lums\n\n", vibLevel, sensorInterval);
+    Serial.printf("vibLevel (peak): %.1f mg | Interval: %lums\n\n", vibLevelPeak, sensorInterval);
 
-    // Publish Accel
-    char accelPayload[150];
+    char accelPayload[180];
     snprintf(accelPayload, sizeof(accelPayload),
-      "{\"accel_x\":%.3f,\"accel_y\":%.3f,\"accel_z\":%.3f}",
-      fax, fay, faz
+      "{\"accel_x\":%.3f,\"accel_y\":%.3f,\"accel_z\":%.3f,\"vibLevel\":%.1f,\"unit\":\"mg\"}",
+      axPeak, ayPeak, azPeak, vibLevelPeak
     );
     client.publish(topic_accel, accelPayload);
 
-    // Publish Gyro
     char gyroPayload[150];
     snprintf(gyroPayload, sizeof(gyroPayload),
       "{\"gyro_x\":%.3f,\"gyro_y\":%.3f,\"gyro_z\":%.3f}",
       fgx, fgy, fgz
     );
     client.publish(topic_gyro, gyroPayload);
+
+    vibLevelPeak = 0;
   }
 }
